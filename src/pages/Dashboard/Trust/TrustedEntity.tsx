@@ -33,7 +33,6 @@ const TrustedEntity = ({ entity, setTrustedEntities, classes, history }: { histo
         sx={{ 
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: 1,
           border: '1px solid',
           borderColor: 'divider',
           mb: 2,

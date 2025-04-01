@@ -147,7 +147,6 @@ const MyIdentity = () => {
                 bgcolor: 'action.hover', 
                 py: 1, 
                 px: 2, 
-                borderRadius: 1,
                 flexGrow: 1,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'

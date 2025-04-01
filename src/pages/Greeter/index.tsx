@@ -77,10 +77,7 @@ const PhoneForm = ({ phone, setPhone, loading, handleSubmitPhone, phoneFieldRef 
         ref={phoneFieldRef}
         sx={{
           width: '100%',
-          mb: 2, 
-          '& .MuiOutlinedInput-root': {
-            borderRadius: theme.shape.borderRadius
-          }
+          mb: 2
         }}
       />
       <Button
@@ -124,10 +121,7 @@ const CodeForm = ({ code, setCode, loading, handleSubmitCode, handleResendCode, 
             }
           }}
           sx={{ 
-            mb: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: theme.shape.borderRadius
-            }
+            mb: 2   
           }}
         />
         <Button
@@ -189,10 +183,7 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
           }
         }}
         sx={{ 
-          mb: 2,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: theme.shape.borderRadius
-          }
+          mb: 2
         }}
       />
 
@@ -221,10 +212,7 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
             }
           }}
           sx={{ 
-            mb: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: theme.shape.borderRadius
-            }
+            mb: 2
           }}
         />
       )}
@@ -236,7 +224,6 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
         fullWidth
         sx={{ 
           mt: 2,
-          borderRadius: theme.shape.borderRadius,
           textTransform: 'none',
           py: 1.2
         }}

@@ -189,7 +189,6 @@ const Welcome = ({ history }) => {
             sx={{ 
               minWidth: '200px', 
               py: 1.5,
-              borderRadius: 2,
               boxShadow: 3,
               '&:hover': {
                 boxShadow: 6,
