@@ -37,6 +37,7 @@ import PageLoading from '../../components/PageLoading.js'
 import { Utils } from '@bsv/sdk'
 import { makeStyles } from '@mui/styles'
 import { Link as RouterLink } from 'react-router-dom'
+import { DEFAULT_CHAIN, DEFAULT_WAB_URL, DEFAULT_STORAGE_URL } from '../../config.js'
 
 const useStyles = makeStyles(style as any, { name: 'Greeter' })
 
@@ -156,7 +157,6 @@ const CodeForm = ({ code, setCode, loading, handleSubmitCode, handleResendCode, 
 
 // Password form component
 const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPassword, showPassword, setShowPassword, loading, handleSubmitPassword, accountStatus, passwordFieldRef }) => {
-  const theme = useTheme();
   return (
     <form onSubmit={handleSubmitPassword}>
       <TextField
@@ -237,7 +237,6 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
 // Main Greeter component with reduced complexity
 const Greeter: React.FC<any> = ({ history }) => {
   const { appVersion, appName, managers } = useContext(WalletContext)
-  const classes = useStyles()
   const theme = useTheme()
 
   // We keep the same Accordion steps: phone, code, password
@@ -253,15 +252,15 @@ const Greeter: React.FC<any> = ({ history }) => {
   
   // Wallet configuration state
   const [showWalletConfig, setShowWalletConfig] = useState(false)
-  const [wabUrl, setWabUrl] = useState<string>("https://wab.babbage.systems")
+  const [wabUrl, setWabUrl] = useState<string>(DEFAULT_WAB_URL)
   const [wabInfo, setWabInfo] = useState<{
     supportedAuthMethods: string[];
     faucetEnabled: boolean;
     faucetAmount: number;
   } | null>(null)
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<string>("")
-  const [selectedNetwork, setSelectedNetwork] = useState<'main' | 'test'>('main')
-  const [selectedStorageUrl, setSelectedStorageUrl] = useState<string>("https://storage.babbage.systems")
+  const [selectedNetwork, setSelectedNetwork] = useState<'main' | 'test'>(DEFAULT_CHAIN)
+  const [selectedStorageUrl, setSelectedStorageUrl] = useState<string>(DEFAULT_STORAGE_URL)
   const [isLoadingConfig, setIsLoadingConfig] = useState(false)
 
   const phoneFieldRef = useRef(null)
@@ -282,6 +281,7 @@ const Greeter: React.FC<any> = ({ history }) => {
   const fetchWalletConfig = async () => {
     setIsLoadingConfig(true)
     try {
+      console.log({ wabUrl, wabInfo })
       const res = await fetch(`${wabUrl}/info`)
       if (!res.ok) {
         throw new Error(`Failed to fetch info: ${res.status}`)
@@ -308,7 +308,7 @@ const Greeter: React.FC<any> = ({ history }) => {
       return
     }
     setShowWalletConfig(false)
-    toast.success("Wallet configuration applied")
+    fetchWalletConfig().then(() => toast.success("Wallet configuration applied"))
   }
 
   useEffect(() => {
@@ -420,7 +420,7 @@ const Greeter: React.FC<any> = ({ history }) => {
         // Save snapshot to local storage
         localStorage.snap = Utils.toBase64(walletManager.saveSnapshot())
         toast.success("Authenticated successfully!")
-        history.push(accountStatus === 'new-user' ? '/welcome' : '/dashboard/apps')
+        history.push('/dashboard/apps')
       } else {
         throw new Error('Authentication failed, maybe password is incorrect?')
       }

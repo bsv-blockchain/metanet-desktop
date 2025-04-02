@@ -40,7 +40,7 @@ import LostPassword from './pages/Recovery/LostPassword'
 import Welcome from './pages/Welcome'
 import Dashboard from './pages/Dashboard'
 import Recovery from './pages/Recovery'
-import { STORAGE_URL, CHAIN } from './config'
+import { DEFAULT_WAB_URL, DEFAULT_STORAGE_URL, DEFAULT_CHAIN } from './config'
 import packageJson from '../package.json'
 
 // Define a type for the config from WalletConfig component
@@ -180,7 +180,7 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         useState<PermissionEventHandler>(() => { });
 
     // ---- WAB + network + storage configuration ----
-    const [wabUrl, setWabUrl] = useState<string>("https://wab.babbage.systems");
+    const [wabUrl, setWabUrl] = useState<string>(DEFAULT_WAB_URL);
     const [wabInfo, setWabInfo] = useState<{
         supportedAuthMethods: string[];
         faucetEnabled: boolean;
@@ -188,8 +188,8 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
     } | null>(null);
 
     const [selectedAuthMethod, setSelectedAuthMethod] = useState<string>("");
-    const [selectedNetwork, setSelectedNetwork] = useState<'main' | 'test'>(CHAIN); // "test" or "main"
-    const [selectedStorageUrl, setSelectedStorageUrl] = useState<string>(STORAGE_URL);
+    const [selectedNetwork, setSelectedNetwork] = useState<'main' | 'test'>(DEFAULT_CHAIN); // "test" or "main"
+    const [selectedStorageUrl, setSelectedStorageUrl] = useState<string>(DEFAULT_STORAGE_URL);
 
     // Flag that indicates configuration is complete. For returning users,
     // if a snapshot exists we auto-mark configComplete.
@@ -507,7 +507,6 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
                     <BreakpointProvider queries={queries}>
                         <AppThemeProvider>
                             <ToastContainer position='top-center' />
-
                             {/* Setup core handlers */}
                             <PasswordHandler setPasswordRetriever={setPasswordRetriever} />
                             <RecoveryKeyHandler setRecoveryKeySaver={setRecoveryKeySaver} />
@@ -523,70 +522,6 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
                             <CertificateAccessHandler
                                 setCertificateAccessHandler={setCertificateAccessCallback}
                             />
-
-                            {/* When user doesn't have a wallet yet, render the config */}
-                            {/* {!snapshotLoaded && (
-                                showWalletConfigEdit ? (
-                                    <WalletConfig
-                                        noManagerYet={noManagerYet}
-                                        wabUrl={wabUrl}
-                                        setWabUrl={setWabUrl}
-                                        fetchWabInfo={fetchWabInfo}
-                                        wabInfo={wabInfo!}
-                                        selectedAuthMethod={selectedAuthMethod}
-                                        onSelectAuthMethod={onSelectAuthMethod}
-                                        selectedNetwork={selectedNetwork}
-                                        setSelectedNetwork={setSelectedNetwork}
-                                        selectedStorageUrl={selectedStorageUrl}
-                                        setSelectedStorageUrl={setSelectedStorageUrl}
-                                        finalizeConfig={finalizeConfig}
-                                    />
-                                ) : (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                                        <Card sx={{ width: { xs: '90%', md: 600 } }}>
-                                            <CardContent>
-                                                {wabInfo ? (
-                                                    <Box>
-                                                        <Typography variant='h5' gutterBottom>
-                                                            Ready to Connect
-                                                        </Typography>
-                                                        <Typography variant='body2' color='textSecondary' pb={2}>
-                                                            Using default wallet configuration
-                                                        </Typography>
-                                                        
-                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                                                            <Button 
-                                                                variant="outlined" 
-                                                                onClick={() => setShowWalletConfigEdit(true)}
-                                                                startIcon={<SettingsIcon />}
-                                                            >
-                                                                Modify Configuration
-                                                            </Button>
-                                                            
-                                                            <Button
-                                                                variant="contained"
-                                                                color="primary"
-                                                                onClick={finalizeConfig}
-                                                                disabled={!wabInfo || !selectedAuthMethod}
-                                                            >
-                                                                Continue
-                                                            </Button>
-                                                        </Box>
-                                                    </Box>
-                                                ) : (
-                                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                        <CircularProgress sx={{ mb: 2 }} />
-                                                        <Typography>
-                                                            Fetching wallet configuration...
-                                                        </Typography>
-                                                    </Box>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    </Box>
-                                )
-                            )} */}
-
                             {/* When a wallet manager exists, render the app routes */}
                             {managers.walletManager && (
                                 <Switch>
