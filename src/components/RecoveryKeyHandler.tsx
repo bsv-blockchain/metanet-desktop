@@ -9,8 +9,7 @@ import {
   Typography,
   useTheme,
   Box,
-  Grid2,
-  Tooltip
+  Grid2
 } from '@mui/material'
 import CustomDialog from './CustomDialog/index.jsx'
 import LockIcon from '@mui/icons-material/Lock'
@@ -23,8 +22,8 @@ type RecoverKeyHandlerProps = {
 }
 
 const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver }) => {
-  const [open, setOpen] = useState(true)
-  const [recoveryKey, setRecoveryKey] = useState<string>('wfafsadiuhfadsfdsfdasafdsasfdssaf43qt344tw54tw453afewafewafdsauhfahuds')
+  const [open, setOpen] = useState(false)
+  const [recoveryKey, setRecoveryKey] = useState<string>('')
   const [affirmative1, setAffirmative1] = useState(false)
   const [affirmative2, setAffirmative2] = useState(false)
   const [affirmative3, setAffirmative3] = useState(false)
@@ -48,6 +47,11 @@ const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver })
 
   const onKeySaved = async (): Promise<void> => {
     resolve(true)
+    setOpen(false)
+  }
+
+  const onAbandon = async (): Promise<void> => {
+    reject(new Error('User abandoned the backup process'))
     setOpen(false)
   }
 
@@ -163,7 +167,13 @@ const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver })
         </DialogContentText>
         </>}
       </DialogContent>
-      <DialogActions sx={{ justifyContent: 'right' }}>
+      <DialogActions sx={{ justifyContent: 'space-between' }}>
+        <Button
+          onClick={onAbandon}
+          variant='text'
+        >
+          Abandon
+        </Button>
         <Button
           onClick={onKeySaved}
           sx={{ backgroundColor: '#006600' }}
