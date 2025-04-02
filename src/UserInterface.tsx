@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useMemo } from 'react'
+import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react'
 import {
     Wallet,
     WalletPermissionsManager,
@@ -155,13 +155,13 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
     const [managers, setManagers] = useState<ManagerState>({});
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
-    const updateSettings = async (newSettings: WalletSettings) => {
+    const updateSettings = useCallback(async (newSettings: WalletSettings) => {
         if (!managers.settingsManager) {
             throw new Error('The user must be logged in to update settings!')
         }
         await managers.settingsManager.set(newSettings);
         setSettings(newSettings);
-    }
+    }, [managers.settingsManager]);
 
     // ---- Callbacks for password/recovery/etc.
     const [passwordRetriever, setPasswordRetriever] = useState<
@@ -199,37 +199,8 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
     // Flag to indicate if wallet configuration is in edit mode
     const [showWalletConfigEdit, setShowWalletConfigEdit] = useState<boolean>(false);
 
-    // Auto-fetch WAB info and apply default configuration when component mounts
-    useEffect(() => {
-        if (!localStorage.snap && !configComplete) {
-            (async () => {
-                try {
-                    // Fetch WAB info
-                    const response = await fetch(`${wabUrl}/info`);
-                    if (!response.ok) {
-                        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-                    }
-
-                    const info = await response.json();
-                    setWabInfo(info);
-
-                    // Auto-select the first auth method
-                    if (info.supportedAuthMethods && info.supportedAuthMethods.length > 0) {
-                        setSelectedAuthMethod(info.supportedAuthMethods[0]);
-
-                        // Automatically apply default configuration
-                        setConfigComplete(true);
-                    }
-                } catch (error: any) {
-                    console.error("Error fetching WAB info", error);
-                    toast.error("Could not fetch WAB info: " + error.message);
-                }
-            })();
-        }
-    }, [wabUrl, configComplete]);
-
-    // Manual fetch WAB info function (for when user modifies the URL)
-    async function fetchWabInfo() {
+    // Fetch WAB info for first-time configuration
+    const fetchWabInfo = useCallback(async () => {
         try {
             const response = await fetch(`${wabUrl}/info`);
             if (!response.ok) {
@@ -243,18 +214,39 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
             if (info.supportedAuthMethods && info.supportedAuthMethods.length === 1) {
                 setSelectedAuthMethod(info.supportedAuthMethods[0]);
             }
+            return info;
         } catch (error: any) {
             console.error("Error fetching WAB info", error);
             toast.error("Could not fetch WAB info: " + error.message);
+            return null;
         }
-    }
+    }, [wabUrl]);
 
-    function onSelectAuthMethod(method: string) {
+    // Auto-fetch WAB info and apply default configuration when component mounts
+    useEffect(() => {
+        if (!localStorage.snap && !configComplete) {
+            (async () => {
+                try {
+                    const info = await fetchWabInfo();
+                    
+                    if (info && info.supportedAuthMethods && info.supportedAuthMethods.length > 0) {
+                        setSelectedAuthMethod(info.supportedAuthMethods[0]);
+                        // Automatically apply default configuration
+                        setConfigComplete(true);
+                    }
+                } catch (error: any) {
+                    console.error("Error in initial WAB setup", error);
+                }
+            })();
+        }
+    }, [wabUrl, configComplete, fetchWabInfo]);
+
+    const onSelectAuthMethod = useCallback((method: string) => {
         setSelectedAuthMethod(method);
-    }
+    }, []);
 
     // For new users: mark configuration complete when WalletConfig is submitted.
-    function finalizeConfig() {
+    const finalizeConfig = useCallback(() => {
         if (!wabInfo || !selectedAuthMethod) {
             toast.error("Please select an Auth Method from the WAB info first.");
             return;
@@ -287,7 +279,88 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
             console.error("Error applying configuration:", error);
             toast.error("Failed to apply configuration: " + (error.message || "Unknown error"));
         }
-    }
+    }, [wabInfo, selectedAuthMethod, wabUrl, selectedNetwork, selectedStorageUrl]);
+
+    // Build wallet function
+    const buildWallet = useCallback(async (
+        primaryKey: number[],
+        privilegedKeyManager: PrivilegedKeyManager
+    ): Promise<any> => {
+        try {
+            const newManagers = {} as any;
+            const chain = selectedNetwork;
+            const keyDeriver = new KeyDeriver(new PrivateKey(primaryKey));
+            const storageManager = new WalletStorageManager(keyDeriver.identityKey);
+            const signer = new WalletSigner(chain, keyDeriver, storageManager);
+            const services = new Services(chain);
+            const wallet = new Wallet(signer, services, undefined, privilegedKeyManager);
+            newManagers.settingsManager = wallet.settingsManager;
+
+            // Use user-selected storage provider
+            const client = new StorageClient(wallet, selectedStorageUrl);
+            await client.makeAvailable();
+            await storageManager.addWalletStorageProvider(client);
+
+            // Setup permissions with provided callbacks.
+            const permissionsManager = new WalletPermissionsManager(wallet, adminOriginator, {
+                seekPermissionsForPublicKeyRevelation: false,
+                seekProtocolPermissionsForSigning: false,
+                seekProtocolPermissionsForEncrypting: false,
+                seekProtocolPermissionsForHMAC: false,
+                seekPermissionsForIdentityKeyRevelation: false,
+                seekPermissionsForKeyLinkageRevelation: false
+            });
+
+            if (protocolPermissionCallback) {
+                permissionsManager.bindCallback('onProtocolPermissionRequested', protocolPermissionCallback);
+            }
+            if (basketAccessCallback) {
+                permissionsManager.bindCallback('onBasketAccessRequested', basketAccessCallback);
+            }
+            if (spendingAuthorizationCallback) {
+                permissionsManager.bindCallback('onSpendingAuthorizationRequested', spendingAuthorizationCallback);
+            }
+            if (certificateAccessCallback) {
+                permissionsManager.bindCallback('onCertificateAccessRequested', certificateAccessCallback);
+            }
+
+            // Store in window for debugging
+            (window as any).permissionsManager = permissionsManager;
+            newManagers.permissionsManager = permissionsManager;
+
+            setManagers(m => ({ ...m, ...newManagers }));
+
+            return permissionsManager;
+        } catch (error: any) {
+            console.error("Error building wallet:", error);
+            toast.error("Failed to build wallet: " + error.message);
+            return null;
+        }
+    }, [
+        selectedNetwork,
+        selectedStorageUrl,
+        adminOriginator,
+        protocolPermissionCallback,
+        basketAccessCallback,
+        spendingAuthorizationCallback,
+        certificateAccessCallback
+    ]);
+
+    // Load snapshot function
+    const loadWalletSnapshot = useCallback(async (walletManager: WalletAuthenticationManager) => {
+        if (localStorage.snap) {
+            try {
+                const snapArr = Utils.toArray(localStorage.snap, 'base64');
+                await walletManager.loadSnapshot(snapArr);
+                console.log("Snapshot loaded successfully");
+                setSnapshotLoaded(true);
+            } catch (err: any) {
+                console.error("Error loading snapshot", err);
+                localStorage.removeItem('snap'); // Clear invalid snapshot
+                toast.error("Couldn't load saved data: " + err.message);
+            }
+        }
+    }, []);
 
     // ---- Build the wallet manager once all required inputs are ready.
     useEffect(() => {
@@ -298,63 +371,6 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
             !managers.walletManager // build only once
         ) {
             try {
-                // Build the wallet using user-chosen network & storage
-                const walletBuilder = async (
-                    primaryKey: number[],
-                    privilegedKeyManager: PrivilegedKeyManager
-                ): Promise<any> => {
-                    try {
-                        const newManagers = {} as any;
-                        const chain = selectedNetwork;
-                        const keyDeriver = new KeyDeriver(new PrivateKey(primaryKey));
-                        const storageManager = new WalletStorageManager(keyDeriver.identityKey);
-                        const signer = new WalletSigner(chain, keyDeriver, storageManager);
-                        const services = new Services(chain);
-                        const wallet = new Wallet(signer, services, undefined, privilegedKeyManager);
-                        newManagers.settingsManager = wallet.settingsManager;
-
-                        // Use user-selected storage provider
-                        const client = new StorageClient(wallet, selectedStorageUrl);
-                        await client.makeAvailable();
-                        await storageManager.addWalletStorageProvider(client);
-
-                        // Setup permissions with provided callbacks.
-                        const permissionsManager = new WalletPermissionsManager(wallet, adminOriginator, {
-                            seekPermissionsForPublicKeyRevelation: false,
-                            seekProtocolPermissionsForSigning: false,
-                            seekProtocolPermissionsForEncrypting: false,
-                            seekProtocolPermissionsForHMAC: false,
-                            seekPermissionsForIdentityKeyRevelation: false,
-                            seekPermissionsForKeyLinkageRevelation: false
-                        });
-
-                        if (protocolPermissionCallback) {
-                            permissionsManager.bindCallback('onProtocolPermissionRequested', protocolPermissionCallback);
-                        }
-                        if (basketAccessCallback) {
-                            permissionsManager.bindCallback('onBasketAccessRequested', basketAccessCallback);
-                        }
-                        if (spendingAuthorizationCallback) {
-                            permissionsManager.bindCallback('onSpendingAuthorizationRequested', spendingAuthorizationCallback);
-                        }
-                        if (certificateAccessCallback) {
-                            permissionsManager.bindCallback('onCertificateAccessRequested', certificateAccessCallback);
-                        }
-
-                        // Store in window for debugging
-                        (window as any).permissionsManager = permissionsManager;
-                        newManagers.permissionsManager = permissionsManager;
-
-                        setManagers(m => ({ ...m, ...newManagers }));
-
-                        return permissionsManager;
-                    } catch (error: any) {
-                        console.error("Error building wallet:", error);
-                        toast.error("Failed to build wallet: " + error.message);
-                        return null;
-                    }
-                };
-
                 // Create network service based on selected network
                 const networkPreset = selectedNetwork === 'main' ? 'mainnet' : 'testnet';
 
@@ -377,7 +393,7 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
                 // Create the wallet manager with proper error handling
                 const exampleWalletManager = new WalletAuthenticationManager(
                     adminOriginator,
-                    walletBuilder,
+                    buildWallet,
                     new OverlayUMPTokenInteractor(
                         resolver,
                         broadcaster
@@ -401,20 +417,8 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
                     onWalletReady(exampleWalletManager);
                 }
 
-                // If a snapshot exists, attempt to load it and mark snapshotLoaded true on success.
-                if (localStorage.snap) {
-                    const snapArr = Utils.toArray(localStorage.snap, 'base64');
-                    exampleWalletManager.loadSnapshot(snapArr)
-                        .then(() => {
-                            console.log("Snapshot loaded successfully");
-                            setSnapshotLoaded(true);
-                        })
-                        .catch((err: any) => {
-                            console.error("Error loading snapshot", err);
-                            localStorage.removeItem('snap'); // Clear invalid snapshot
-                            toast.error("Couldn't load saved data: " + err.message);
-                        });
-                }
+                // Load snapshot if available
+                loadWalletSnapshot(exampleWalletManager);
 
             } catch (err: any) {
                 console.error("Error initializing wallet manager:", err);
@@ -429,34 +433,33 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         configComplete,
         managers.walletManager,
         selectedNetwork,
-        selectedStorageUrl,
-        adminOriginator,
-        protocolPermissionCallback,
-        basketAccessCallback,
-        spendingAuthorizationCallback,
-        certificateAccessCallback,
         wabUrl,
-        onWalletReady
+        adminOriginator,
+        onWalletReady,
+        buildWallet,
+        loadWalletSnapshot
     ]);
 
     // When Settings manager becomes available, populate the user's settings
     useEffect(() => {
-        (async () => {
+        const loadSettings = async () => {
             if (managers.settingsManager) {
                 try {
-                    const settings = await managers.settingsManager.get();
-                    setSettings(settings);
+                    const userSettings = await managers.settingsManager.get();
+                    setSettings(userSettings);
                 } catch (e) {
                     // Unable to load settings, defaults are already loaded.
                 }
             }
-        })();
-    }, [managers])
+        };
+        
+        loadSettings();
+    }, [managers]);
 
     // For new users, show the WalletConfig if no snapshot exists.
     const noManagerYet = !managers.walletManager;
 
-    const logout = () => {
+    const logout = useCallback(() => {
         // Clear localStorage to prevent auto-login
         if (localStorage.snap) {
             localStorage.removeItem('snap');
@@ -468,11 +471,11 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         // Reset configuration state
         setConfigComplete(false);
         setSnapshotLoaded(false);
-    };
+    }, []);
 
     const contextValue = useMemo(() => ({
         managers,
-        updateManagers: (newManagers: ManagerState) => setManagers(newManagers),
+        updateManagers: (newManagers: ManagerState) => setManagers(prev => ({ ...prev, ...newManagers })),
         isFocused: isFocused || (() => Promise.resolve(true)),
         onFocusRequested: requestFocus || (() => Promise.resolve()),
         onFocusRelinquished: relinquishFocus || (() => Promise.resolve()),
@@ -492,9 +495,10 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         appVersion,
         adminOriginator,
         settings,
+        updateSettings,
         selectedNetwork,
         logout
-    ])
+    ]);
 
     return (
         <WalletContext.Provider
@@ -529,7 +533,6 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
                                     <Route exact path='/recovery/lost-phone' component={LostPhone} />
                                     <Route exact path='/recovery/lost-password' component={LostPassword} />
                                     <Route exact path='/recovery' component={Recovery} />
-                                    <Route path='/welcome' component={Welcome} />
                                     <Route path='/dashboard' component={Dashboard} />
                                 </Switch>
                             )}
