@@ -5,7 +5,12 @@ import {
   DialogActions,
   Button,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Typography,
+  useTheme,
+  Box,
+  Grid2,
+  Tooltip
 } from '@mui/material'
 import CustomDialog from './CustomDialog/index.jsx'
 import LockIcon from '@mui/icons-material/Lock'
@@ -18,10 +23,11 @@ type RecoverKeyHandlerProps = {
 }
 
 const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver }) => {
-  const [open, setOpen] = useState(false)
-  const [recoveryKey, setRecoveryKey] = useState<string>('')
-  const [myResponsibility, setMyResponsibility] = useState(false)
-  const [atLeastTwo, setAtLeastTwo] = useState(false)
+  const [open, setOpen] = useState(true)
+  const [recoveryKey, setRecoveryKey] = useState<string>('wfafsadiuhfadsfdsfdasafdsasfdssaf43qt344tw54tw453afewafewafdsauhfahuds')
+  const [affirmative1, setAffirmative1] = useState(false)
+  const [affirmative2, setAffirmative2] = useState(false)
+  const [affirmative3, setAffirmative3] = useState(false)
 
   const [resolve, setResolve] = useState<Function>(() => { })
   const [reject, setReject] = useState<Function>(() => { })
@@ -54,77 +60,116 @@ const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver })
     })
   }
 
+  const theme = useTheme()
+
   return (
     <CustomDialog
       open={open}
-      title='Save Your Metanet Recovery Key'
+      title='Secure Access Backup and Recovery'
     >
       <DialogContent>
-        <DialogContentText>
-          The security of your Metanet identity depends on saving your recovery key in case you lose your phone or password:
+        { !affirmative1 && <>
+          <DialogContentText variant='body1' sx={{ mt: 3, mb: 1, color: theme.palette.getContrastText(theme.palette.background.default) }}>
+            Save Your Recovery Key Now:
+          </DialogContentText>
+          <Grid2 container spacing={2} width='100%'>
+            <Box sx={{ border: '1px solid', borderColor: theme.palette.divider, p: 3, height: '100%' }}>
+              <Typography variant='body1'
+                sx={{
+                  userSelect: 'all',
+                  overflow: 'hidden',
+                  wordBreak: 'break-all'
+                }}
+                color={theme.palette.getContrastText(theme.palette.background.default)}
+              >
+                {recoveryKey}
+              </Typography>
+            </Box>
+            <Button
+              variant='contained'
+              color='primary'
+              startIcon={<DownloadIcon />}
+              onClick={handleDownload}
+              fullWidth
+              sx={{ p: 2 }}
+            >
+              Save as a File
+            </Button>
+          </Grid2>
+          <Box my={3}>
+            <DialogContentText>Take a screenshot, email it to yourself, print it out and put it in a safe, or save it to secure cloud storage.</DialogContentText>
+          </Box>
+        </>}
+        <DialogContentText sx={{ color: theme.palette.getContrastText(theme.palette.background.default) }}>
+          <FormControlLabel
+            control={<Checkbox
+              checked={affirmative1}
+              onChange={() => setAffirmative1(x => !x)}
+            />}
+            label={'I have saved my recovery key in a secure location'}
+            labelPlacement="start"
+            sx={{ m: 0, p: 0 }}
+          />
         </DialogContentText>
-        <br />
+        { affirmative1 && <>
+        <DialogContentText variant='body1' sx={{ mt: 3, mb: 1 }}>
+          Any 2 of 3 factors are required to access your data:
+        </DialogContentText>
+        <DialogContentText sx={{ mb: 3, textAlign: 'center', fontWeight: 'bold', color: theme.palette.getContrastText(theme.palette.background.default) }}>
+          Phone, Password, Recovery Key
+        </DialogContentText>
+        <DialogContentText variant='body1' sx={{ mt: 3, mb: 1 }}>
+          When you lose your phone or forget your password, you must use the other factors to re-establish secure control. This is a perfectly normal and unavoidable fact of life. However -
+        </DialogContentText>
         <DialogContentText>
-          <b
-            style={{
-              userSelect: 'all',
-              wordWrap: 'break-word'
-            }}
+          <Typography 
+            variant="body2" 
+            color="error" 
+            sx={{ 
+              mt: 2, 
+              mb: 2, 
+              fontWeight: 'bold',
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'error.main',
+              p: 2,
+              borderRadius: 1
+             }}
           >
-            {recoveryKey}
-          </b>
+            Loss of more than one factor will result in TOTAL LOSS of access to all assets, encrypted data, and certificates.
+          </Typography>
         </DialogContentText>
-        <DialogContentText>
-          <ul>
-            <li>Take a screenshot</li>
-            <li>Email it to yourself</li>
-            <li>Write it down and put it in a safe</li>
-          </ul>
+        <DialogContentText sx={{ color: theme.palette.getContrastText(theme.palette.background.default) }}>
+          <FormControlLabel
+            control={<Checkbox
+              checked={affirmative3}
+              onChange={() => setAffirmative3(x => !x)}
+            />}
+            label={'I will immediately recover lost factors using the other two'}
+            labelPlacement="start"
+            sx={{ m: 0, p: 0 }}
+          />
         </DialogContentText>
-        <center style={{ marginBottom: '0.5em' }}>
-          <Button
-            color='primary'
-            startIcon={<DownloadIcon />}
-            onClick={handleDownload}
-          >
-            Download Local File
-          </Button>
-        </center>
-        <DialogContentText>
-          You need <b>at least two</b> of your phone, password and recovery key to log into your Metanet identity. No one can help you if you lose access.
+        <DialogContentText sx={{ color: theme.palette.getContrastText(theme.palette.background.default) }}>
+          <FormControlLabel
+            control={<Checkbox
+              checked={affirmative2}
+              onChange={() => setAffirmative2(x => !x)}
+            />}
+            label={'I am solely responsible for maintaining access to my own data'}
+            labelPlacement="start"
+            sx={{ m: 0, p: 0 }}
+          />
         </DialogContentText>
-        <FormControlLabel
-          control={<Checkbox
-            checked={myResponsibility}
-            onChange={() => setMyResponsibility(x => !x)}
-          />}
-          label='My Responsibility'
-        />
-        <br />
-        <FormControlLabel
-          control={<Checkbox
-            checked={atLeastTwo}
-            onChange={() => setAtLeastTwo(x => !x)}
-          />}
-          label='...at least two...'
-        />
+        </>}
       </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={() => {
-            reject(new Error('The user chose not to save their recovery key!'))
-            setRecoveryKey('')
-            setOpen(false)
-          }}
-          color='secondary'
-        >
-          Abort & Cancel
-        </Button>
+      <DialogActions sx={{ justifyContent: 'right' }}>
         <Button
           onClick={onKeySaved}
-          color='primary'
+          sx={{ backgroundColor: '#006600' }}
           endIcon={<LockIcon />}
-          disabled={(!myResponsibility) || (!atLeastTwo)}
+          variant='contained'
+          disabled={(!affirmative1) || (!affirmative2) || (!affirmative3)}
         >
           Securely Saved
         </Button>
