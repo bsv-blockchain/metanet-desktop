@@ -314,13 +314,13 @@ const Greeter: React.FC<any> = ({ history }) => {
   }
 
   useEffect(() => {
-        if (
-            managers?.walletManager?.authenticated && snapshotLoaded
-        ) {
-            history.push('/dashboard/apps')
-            setPageLoaded(true)
-        }
-    }, [managers?.walletManager?.authenticated, snapshotLoaded, history])
+    if (
+      managers?.walletManager?.authenticated && snapshotLoaded
+    ) {
+      history.push('/dashboard/apps')
+    }
+    setPageLoaded(true)
+  }, [managers?.walletManager?.authenticated, snapshotLoaded, history])
 
   // Force the manager to use the "presentation-key-and-password" flow:
   useEffect(() => {
