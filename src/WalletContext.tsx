@@ -125,44 +125,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         })
     }
 
-    // Provide a handler for basket-access requests that enqueues them
-    useEffect(() => {
-        setBasketAccessCallback(async (incomingRequest: PermissionRequest & {
-            requestID: string
-            basket?: string
-            originator: string
-            reason?: string
-            renewal?: boolean
-        }) => {
-            // Enqueue the new request
-            setRequests(prev => {
-                const wasEmpty = prev.length === 0
-
-                // If no requests were queued, handle focusing logic right away
-                if (wasEmpty) {
-                    isFocused().then(currentlyFocused => {
-                        setWasOriginallyFocused(currentlyFocused)
-                        if (!currentlyFocused) {
-                            onFocusRequested()
-                        }
-                        setBasketAccessModalOpen(true)
-                    })
-                }
-
-                return [
-                    ...prev,
-                    {
-                        requestID: incomingRequest.requestID,
-                        basket: incomingRequest.basket,
-                        originator: incomingRequest.originator,
-                        reason: incomingRequest.reason,
-                        renewal: incomingRequest.renewal
-                    }
-                ]
-            })
-        })
-    }, [isFocused, onFocusRequested])
-
     const updateSettings = useCallback(async (newSettings: WalletSettings) => {
         if (!managers.settingsManager) {
             throw new Error('The user must be logged in to update settings!')
@@ -186,6 +148,49 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         useState<PermissionEventHandler>(() => { });
     const [certificateAccessCallback, setCertificateAccessCallback] =
         useState<PermissionEventHandler>(() => { });
+
+
+    // Provide a handler for basket-access requests that enqueues them
+    useEffect(() => {
+        setBasketAccessCallback((incomingRequest: PermissionRequest & {
+                requestID: string
+                basket?: string
+                originator: string
+                reason?: string
+                renewal?: boolean
+            }, ...args: any) => {
+                console.log({ incomingRequest })
+                // Enqueue the new request
+                if(incomingRequest?.requestID) {
+                    setRequests(prev => {
+                        const wasEmpty = prev.length === 0
+
+                        // If no requests were queued, handle focusing logic right away
+                        if (wasEmpty) {
+                            isFocused().then(currentlyFocused => {
+                                setWasOriginallyFocused(currentlyFocused)
+                                if (!currentlyFocused) {
+                                    onFocusRequested()
+                                }
+                                setBasketAccessModalOpen(true)
+                            })
+                        }
+
+                        return [
+                            ...prev,
+                            {
+                                requestID: incomingRequest.requestID,
+                                basket: incomingRequest.basket,
+                                originator: incomingRequest.originator,
+                                reason: incomingRequest.reason,
+                                renewal: incomingRequest.renewal
+                            }
+                        ]
+                    })
+                }
+            }
+        )
+    }, [isFocused, onFocusRequested])
 
     // ---- WAB + network + storage configuration ----
     const [wabUrl, setWabUrl] = useState<string>(DEFAULT_WAB_URL);
