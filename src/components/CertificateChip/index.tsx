@@ -106,7 +106,8 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
-      gap: 1
+      gap: 1,
+      position: 'relative'
     }}>
       <Typography variant='h5'>
         {certName}
@@ -115,6 +116,23 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
       <Typography variant='body1'>
         {lastAccessed || descriptionState}
       </Typography>
+      {/* Revoke button - only shown when canRevoke is true */}
+      {canRevoke && (
+        <Box sx={{ 
+          position: 'absolute',
+          top: 0,
+          right: 0
+        }}>
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={handleRelinquishCertificate}
+            aria-label="revoke certificate"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      )}
 
       {/* Fields display section */}
       {fields.length > 0 && (
@@ -165,20 +183,6 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
         />}
       {expires && (
         <Typography className={classes.expires}>{expires}</Typography>
-      )}
-
-      {/* Revoke button - only shown when canRevoke is true */}
-      {canRevoke && (
-        <Box sx={{ ml: 1 }}>
-          <IconButton
-            color="primary"
-            size="small"
-            onClick={handleRelinquishCertificate}
-            aria-label="revoke certificate"
-          >
-            <DeleteIcon />
-          </IconButton>
-        </Box>
       )}
     </Box>
   )
