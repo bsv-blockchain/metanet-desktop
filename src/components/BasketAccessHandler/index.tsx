@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useCallback, useContext } from 'react'
 import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip, useTheme } from '@mui/material'
 import CustomDialog from '../CustomDialog'
 import AppChip from '../AppChip/index'
@@ -33,14 +33,6 @@ const BasketAccessHandler = () => {
         advanceQueue()
     }
 
-    // If no current request, don't render anything
-    if (!requests[0]) {
-        return null
-    }
-
-    // Current (top) request in the queue
-    const { basket, originator, reason, renewal } = requests[0]
-
     // Get avatar and icon
     const getIconAvatar = () => (
         <Avatar 
@@ -56,6 +48,10 @@ const BasketAccessHandler = () => {
             <ShoppingBasketIcon fontSize="medium" />
         </Avatar>
     );
+
+    if (!basketAccessModalOpen || !requests.length) return null
+
+    const { basket, originator, reason, renewal } = requests[0]
 
     return (
         <CustomDialog
