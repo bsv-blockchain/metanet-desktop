@@ -61,8 +61,10 @@ export interface WalletContextValue {
     setSpendingAuthorizationCallback: (callback: PermissionEventHandler) => void
     setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
     snapshotLoaded: boolean
-    requests: BasketAccessRequest[]
-    advanceQueue: () => void
+    basketRequests: BasketAccessRequest[]
+    certificateRequests: CertificateAccessRequest[]
+    advanceBasketQueue: () => void
+    advanceCertificateQueue: () => void
 }
 
 export const WalletContext = createContext<WalletContextValue>({
@@ -78,18 +80,31 @@ export const WalletContext = createContext<WalletContextValue>({
     setSpendingAuthorizationCallback: () => { },
     setProtocolPermissionCallback: () => { },
     snapshotLoaded: false,
-    requests: [],
-    advanceQueue: () => { }
+    basketRequests: [],
+    certificateRequests: [],
+    advanceBasketQueue: () => { },
+    advanceCertificateQueue: () => { }
 })
 
 interface WalletContextProps {
     children?: React.ReactNode;
 }
 
-
 type BasketAccessRequest = {
     requestID: string
     basket?: string
+    originator: string
+    reason?: string
+    renewal?: boolean
+}
+
+type CertificateAccessRequest = {
+    requestID: string
+    certificate?: {
+        certType?: string
+        fields?: Record<string, any>
+        verifier?: string
+    }
     originator: string
     reason?: string
     renewal?: boolean
@@ -101,20 +116,35 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     const [managers, setManagers] = useState<ManagerState>({});
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [adminOriginator, setAdminOriginator] = useState(ADMIN_ORIGINATOR);
-    const { isFocused, onFocusRequested, onFocusRelinquished, setBasketAccessModalOpen } = useContext(UserContext);
+    const { isFocused, onFocusRequested, onFocusRelinquished, setBasketAccessModalOpen, setCertificateAccessModalOpen } = useContext(UserContext);
 
     // Track if we were originally focused
     const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
 
-    // This array will queue up multiple requests
-    const [requests, setRequests] = useState<BasketAccessRequest[]>([])
+    // Separate request queues for basket and certificate access
+    const [basketRequests, setBasketRequests] = useState<BasketAccessRequest[]>([])
+    const [certificateRequests, setCertificateRequests] = useState<CertificateAccessRequest[]>([])
 
-    // Pop the first request from the queue, close if empty, relinquish focus if needed
-    const advanceQueue = () => {
-        setRequests(prev => {
+    // Pop the first request from the basket queue, close if empty, relinquish focus if needed
+    const advanceBasketQueue = () => {
+        setBasketRequests(prev => {
             const newQueue = prev.slice(1)
             if (newQueue.length === 0) {
                 setBasketAccessModalOpen(false)
+                if (!wasOriginallyFocused) {
+                    onFocusRelinquished()
+                }
+            }
+            return newQueue
+        })
+    }
+
+    // Pop the first request from the certificate queue, close if empty, relinquish focus if needed
+    const advanceCertificateQueue = () => {
+        setCertificateRequests(prev => {
+            const newQueue = prev.slice(1)
+            if (newQueue.length === 0) {
+                setCertificateAccessModalOpen(false)
                 if (!wasOriginallyFocused) {
                     onFocusRelinquished()
                 }
@@ -142,8 +172,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         useState<PermissionEventHandler>(() => { });
     const [protocolPermissionCallback, setProtocolPermissionCallback] =
         useState<PermissionEventHandler>(() => { });
-    const [certificateAccessCallback, setCertificateAccessCallback] =
-        useState<PermissionEventHandler>(() => { });
 
 
     // Provide a handler for basket-access requests that enqueues them
@@ -156,7 +184,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     }) => {
         // Enqueue the new request
         if(incomingRequest?.requestID) {
-            setRequests(prev => {
+            setBasketRequests(prev => {
                 const wasEmpty = prev.length === 0
 
                 // If no requests were queued, handle focusing logic right away
@@ -175,6 +203,48 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
                     {
                         requestID: incomingRequest.requestID,
                         basket: incomingRequest.basket,
+                        originator: incomingRequest.originator,
+                        reason: incomingRequest.reason,
+                        renewal: incomingRequest.renewal
+                    }
+                ]
+            })
+        }
+    }, [isFocused, onFocusRequested])
+
+    // Provide a handler for certificate-access requests that enqueues them
+    const certificateAccessCallback = useCallback((incomingRequest: PermissionRequest & {
+        requestID: string
+        certificate?: {
+            certType?: string
+            fields?: Record<string, any>
+            verifier?: string
+        }
+        originator: string
+        reason?: string
+        renewal?: boolean
+    }) => {
+        // Enqueue the new request
+        if(incomingRequest?.requestID) {
+            setCertificateRequests(prev => {
+                const wasEmpty = prev.length === 0
+
+                // If no requests were queued, handle focusing logic right away
+                if (wasEmpty) {
+                    isFocused().then(currentlyFocused => {
+                        setWasOriginallyFocused(currentlyFocused)
+                        if (!currentlyFocused) {
+                            onFocusRequested()
+                        }
+                        setCertificateAccessModalOpen(true)
+                    })
+                }
+
+                return [
+                    ...prev,
+                    {
+                        requestID: incomingRequest.requestID,
+                        certificate: incomingRequest.certificate,
                         originator: incomingRequest.originator,
                         reason: incomingRequest.reason,
                         renewal: incomingRequest.renewal
@@ -489,16 +559,18 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         setRecoveryKeySaver,
         setSpendingAuthorizationCallback,
         setProtocolPermissionCallback,
-        setCertificateAccessCallback,
-        requests,
-        advanceQueue
+        basketRequests,
+        certificateRequests,
+        advanceBasketQueue,
+        advanceCertificateQueue
     }), [
         managers,
         settings,
         updateSettings,
         selectedNetwork,
         logout,
-        requests,
+        basketRequests,
+        certificateRequests,
     ]);
 
     return <WalletContext.Provider value={wallet}>
