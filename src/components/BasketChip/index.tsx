@@ -11,7 +11,7 @@ import { generateDefaultIcon } from '../../constants/popularApps'
 // import registryOperator from '../../utils/registryOperator'
 import { useTheme } from '@mui/styles'
 import ShoppingBasket from '@mui/icons-material/ShoppingBasket'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
 import { RegistryClient } from '@bsv/sdk'
 
 const useStyles = makeStyles(style as any, {

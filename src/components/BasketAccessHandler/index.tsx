@@ -1,7 +1,6 @@
 import { Dispatch, SetStateAction, useState, useEffect, useContext, FC } from 'react'
-import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip, Grid } from '@mui/material'
+import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
 import CustomDialog from '../CustomDialog'
-import { WalletContext, WalletContextValue } from '../../UserInterface'
 import AppChip from '../AppChip/index'
 import BasketChip from '../BasketChip/index'
 import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
@@ -9,6 +8,9 @@ import { useTheme } from '@mui/material/styles'
 import Avatar from '@mui/material/Avatar'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
 import deterministicColor from '../../utils/deterministicColor'
+import { WalletContext } from '../../WalletContext'
+import { UserContext } from '../../UserContext'
+
 
 type BasketAccessRequest = {
     requestID: string
@@ -21,12 +23,8 @@ type BasketAccessRequest = {
 const BasketAccessHandler: FC<{
     setBasketAccessHandler: Dispatch<SetStateAction<PermissionEventHandler>>
 }> = ({ setBasketAccessHandler }) => {
-    const {
-        onFocusRequested,
-        onFocusRelinquished,
-        isFocused,
-        managers
-    } = useContext<WalletContextValue>(WalletContext)
+    const { managers } = useContext(WalletContext)
+    const { onFocusRequested, onFocusRelinquished, isFocused } = useContext(UserContext)
     const theme = useTheme()
 
     // Whether our dialog is open

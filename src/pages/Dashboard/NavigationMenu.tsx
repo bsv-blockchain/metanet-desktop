@@ -19,7 +19,7 @@ import {
 import Profile from '../../components/Profile.js'
 import { useContext, useEffect } from 'react';
 import { useHistory } from 'react-router';
-import { WalletContext } from '../../WalletContext.js';
+import { WalletContext } from '../../WalletContext';
 import { useBreakpoint } from '../../utils/useBreakpoints.js';
 import { UserContext } from '../../UserContext.js';
 

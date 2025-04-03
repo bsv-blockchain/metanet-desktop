@@ -10,11 +10,11 @@ import {
 } from '@mui/material'
 import { WalletContext } from '../../WalletContext.js'
 import PageLoading from '../../components/PageLoading.js'
-import NavigationMenu from './NavigationMenu.js'
+import Menu from '../../layouts/Menu.js'
 import { Menu as MenuIcon, Settings, Apps } from '@mui/icons-material'
 import MyIdentity from './MyIdentity/index.js'
 import Trust from './Trust/index.js'
-import App from './App/index.js'
+import App from './App/Index.js'
 import Security from './Security/index.js'
 
 const useStyles = makeStyles(style as any, {
@@ -91,7 +91,7 @@ export default function Dashboard() {
             </Toolbar>
           </div>}
       </div>
-      <NavigationMenu menuOpen={menuOpen} setMenuOpen={setMenuOpen} menuRef={menuRef} />
+      <Menu menuOpen={menuOpen} setMenuOpen={setMenuOpen} menuRef={menuRef} />
       <div className={classes.page_container}>
         <Switch>
           <Redirect from='/dashboard/counterparty/self' to={`/dashboard/counterparty/${myIdentityKey}`} />

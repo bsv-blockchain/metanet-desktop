@@ -19,7 +19,6 @@ async function onFocusRelinquished(): Promise<void> {
 // UserContextProps Component Props
 // -----
 interface UserContextProps {
-    adminOriginator?: string;
     appVersion?: string;
     appName?: string;
     children?: React.ReactNode;
@@ -31,7 +30,6 @@ export interface UserContextValue {
     onFocusRelinquished: () => Promise<void>;
     appVersion: string;
     appName: string;
-    adminOriginator: string;
 }
 
 export const UserContext = createContext<UserContextValue>({} as UserContextValue);
@@ -43,7 +41,6 @@ export const UserContext = createContext<UserContextValue>({} as UserContextValu
  * New users see the WalletConfig UI.
  */
 export const UserContextProvider: React.FC<UserContextProps> = ({
-    adminOriginator = 'admin.com',
     appVersion = packageJson.version,
     appName = 'Metanet Desktop',
     children
@@ -53,10 +50,9 @@ export const UserContextProvider: React.FC<UserContextProps> = ({
         isFocused,
         onFocusRequested,
         onFocusRelinquished,
-        adminOriginator,
         appVersion,
         appName
-    }), [adminOriginator, appVersion, appName]);
+    }), [appVersion, appName]);
 
     return (
         <UserContext.Provider value={userContext}>

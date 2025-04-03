@@ -53,6 +53,7 @@ export interface WalletContextValue {
     network: 'mainnet' | 'testnet';
     // Logout
     logout: () => void;
+    adminOriginator: string;
 }
 
 export const WalletContext = createContext<WalletContextValue>({
@@ -62,6 +63,7 @@ export const WalletContext = createContext<WalletContextValue>({
     updateSettings: async () => { },
     network: 'mainnet',
     logout: () => { },
+    adminOriginator: ADMIN_ORIGINATOR
 })
 
 interface WalletContextProps {
@@ -395,7 +397,8 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         settings,
         updateSettings,
         network: selectedNetwork === 'main' ? 'mainnet' : 'testnet' as 'mainnet' | 'testnet',
-        logout
+        logout,
+        adminOriginator: ADMIN_ORIGINATOR
     }), [
         managers,
         settings,

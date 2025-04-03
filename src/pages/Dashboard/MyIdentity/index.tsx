@@ -8,16 +8,16 @@ import style from './style.js'
 import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import EyeCon from '@mui/icons-material/Visibility'
-import { WalletContext } from '../../../UserInterface.js'
+import { WalletContext } from '../../../WalletContext'
 import { ProtoWallet, VerifiableCertificate } from '@bsv/sdk'
-import CertificateChip from '../../../components/CertificateChip/index.js'
+import CertificateChip from '../../../components/CertificateChip'
 
 const useStyles = makeStyles(style, {
   name: 'MyIdentity'
 })
 
 const MyIdentity = () => {
-  const { managers, adminOriginator, network } = useContext(WalletContext)
+  const { managers, network, adminOriginator } = useContext(WalletContext)
 
   const [search, setSearch] = useState('')
   const [addPopularSigniaCertifiersModalOpen, setAddPopularSigniaCertifiersModalOpen] = useState(false)

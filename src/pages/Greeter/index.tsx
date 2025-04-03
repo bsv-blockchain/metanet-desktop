@@ -32,7 +32,8 @@ import {
 import PhoneEntry from '../../components/PhoneEntry.js'
 import AppLogo from '../../components/AppLogo'
 import { toast } from 'react-toastify'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
+import { UserContext } from '../../UserContext'
 import PageLoading from '../../components/PageLoading.js'
 import { Utils } from '@bsv/sdk'
 import { makeStyles } from '@mui/styles'
@@ -236,7 +237,8 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
 
 // Main Greeter component with reduced complexity
 const Greeter: React.FC<any> = ({ history }) => {
-  const { appVersion, appName, managers } = useContext(WalletContext)
+  const { managers } = useContext(WalletContext)
+  const { appVersion, appName } = useContext(UserContext)
   const theme = useTheme()
 
   // We keep the same Accordion steps: phone, code, password

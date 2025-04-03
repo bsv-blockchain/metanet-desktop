@@ -19,7 +19,8 @@ import {
 import Profile from '../components/Profile.jsx'
 import { useContext, useEffect } from 'react';
 import { useHistory } from 'react-router';
-import { WalletContext } from '../WalletContext.js';
+import { WalletContext } from '../WalletContext';
+import { UserContext } from '../UserContext';
 import { useBreakpoint } from '../utils/useBreakpoints.js';
 
 
@@ -42,7 +43,8 @@ const menuItemStyle = (isSelected) => ({
 export default function Menu({ menuOpen, setMenuOpen, menuRef }) {
   const history = useHistory()
   const breakpoints = useBreakpoint()
-  const { appName, appVersion, logout } = useContext(WalletContext)
+  const { logout } = useContext(WalletContext)
+  const { appName, appVersion } = useContext(UserContext)
     
   // History.push wrapper
   const navigation = {

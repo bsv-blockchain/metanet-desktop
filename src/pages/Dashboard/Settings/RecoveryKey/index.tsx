@@ -4,7 +4,7 @@ import {
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import { makeStyles } from '@mui/styles'
-import { WalletContext } from '../../../../UserInterface'
+import { WalletContext } from '../../../../WalletContext'
 import { Utils } from '@bsv/sdk'
 
 const useStyles = makeStyles(theme => ({

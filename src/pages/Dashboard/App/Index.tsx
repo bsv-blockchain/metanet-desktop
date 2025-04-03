@@ -5,7 +5,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { useLocation } from 'react-router-dom';
-import { WalletContext } from '../../../UserInterface';
+import { WalletContext } from '../../../WalletContext';
 import { WalletAction } from '@bsv/sdk';
 
 import { DEFAULT_APP_ICON } from '../../../constants/popularApps';

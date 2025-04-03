@@ -8,7 +8,7 @@ import style from './style.js'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import { toast } from 'react-toastify'
-import { WalletContext } from '../../../UserInterface'
+import { WalletContext } from '../../../WalletContext'
 
 import TrustedEntity from './TrustedEntity.js'
 import arraysOfObjectsAreEqual from '../../../utils/arraysOfObjectsAreEqual.js'

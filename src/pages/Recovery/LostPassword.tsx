@@ -19,7 +19,7 @@ import {
 } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { toast } from 'react-toastify'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
 import PhoneEntry from '../../components/PhoneEntry.js'
 import style from './style.js'
 import { Utils } from '@bsv/sdk'

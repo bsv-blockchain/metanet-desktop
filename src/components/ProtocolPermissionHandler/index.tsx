@@ -1,20 +1,16 @@
 import { Dispatch, SetStateAction, useState, useEffect, useContext } from 'react'
-import { DialogContent, DialogActions, Button, Paper, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
-import Grid from '@mui/material/Grid2'
+import { DialogContent, DialogActions, Button, Box, Stack, Tooltip, Avatar, Divider } from '@mui/material'
 import CustomDialog from '../CustomDialog/index'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
+import { UserContext } from '../../UserContext'
 import AppChip from '../AppChip/index'
 import ProtoChip from '../ProtoChip/index'
 import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
-import { useTheme } from '@mui/material/styles'
-import Avatar from '@mui/material/Avatar'
-// Import custom icons for each permission type
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import CodeIcon from '@mui/icons-material/Code'
 import CachedIcon from '@mui/icons-material/Cached'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
 import deterministicColor from '../../utils/deterministicColor'
-import InfoIcon from '@mui/icons-material/Info'
 
 // Permission request types
 type PermissionType = 'identity' | 'protocol' | 'renewal' | 'basket';
@@ -33,17 +29,11 @@ interface PermissionItem {
 const ProtocolPermissionHandler: React.FC<{
   setProtocolPermissionCallback: Dispatch<SetStateAction<PermissionEventHandler>>
 }> = ({ setProtocolPermissionCallback }) => {
-  const {
-    onFocusRequested,
-    onFocusRelinquished,
-    isFocused,
-    managers
-  } = useContext(WalletContext)
+  const { managers } = useContext(WalletContext)
+  const { onFocusRequested, onFocusRelinquished, isFocused } = useContext(UserContext)
   const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
   const [open, setOpen] = useState(false)
   const [perms, setPerms] = useState<Array<PermissionItem>>([])
-
-  const theme = useTheme()
 
   const handleCancel = () => {
     managers.permissionsManager.denyPermission(perms[0].requestID)

@@ -1,12 +1,14 @@
 import { useState, useEffect, useContext, SetStateAction, FC, Dispatch } from 'react'
 import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
 import CustomDialog from '../CustomDialog/index.jsx'
-import { WalletContext } from '../../UserInterface.js'
 import AppChip from '../AppChip'
 import CertificateChip from '../CertificateChip/index'
 import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import deterministicColor from '../../utils/deterministicColor'
+import { UserContext } from '../../UserContext'
+import { WalletContext } from '../../WalletContext'
+
 
 type CertificateAccessRequest = {
   requestID: string
@@ -22,12 +24,8 @@ type CertificateAccessRequest = {
 const CertificateAccessHandler: FC<{
   setCertificateAccessHandler: Dispatch<SetStateAction<PermissionEventHandler>>
 }> = ({ setCertificateAccessHandler }) => {
-  const {
-    onFocusRequested,
-    onFocusRelinquished,
-    isFocused,
-    managers
-  } = useContext(WalletContext)
+  const { managers } = useContext(WalletContext)
+  const { onFocusRequested, onFocusRelinquished, isFocused } = useContext(UserContext)
   const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
   const [open, setOpen] = useState(false)
   const [perms, setPerms] = useState<CertificateAccessRequest[]>([])
