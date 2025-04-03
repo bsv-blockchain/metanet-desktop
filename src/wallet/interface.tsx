@@ -23,254 +23,758 @@ import {
   DiscoverByIdentityKeyArgs,
   DiscoverByAttributesArgs,
   GetHeaderArgs,
+  WERR_REVIEW_ACTIONS
 } from '@bsv/sdk';
 import { listen, emit } from '@tauri-apps/api/event'
 
-// Type definitions for request and response handling
-type RequestHeaders = Record<string, string>;
-
-interface WalletRequest {
-  method: string;
-  path: string;
-  headers: RequestHeaders;
-  body: string;
-  request_id: string;
-}
-
-interface WalletResponse {
-  request_id: string;
-  status: number;
-  body: string;
-}
-
-// Define the handler function type
-type RequestHandler = (request: WalletRequest, wallet: WalletInterface) => Promise<any>;
-
-/**
- * Creates a wallet endpoint handler function with standardized error handling
- */
-const createHandler = <T, R>(
-  handlerFn: (args: T, origin: string, wallet: WalletInterface) => Promise<R>
-): RequestHandler => {
-  return async (req: WalletRequest, wallet: WalletInterface): Promise<R> => {
-    try {
-      const args = req.body ? JSON.parse(req.body) as T : {} as T;
-      return await handlerFn(args, req.headers['origin'], wallet);
-    } catch (error) {
-      console.error(`Handler error:`, error);
-      throw error;
-    }
-  };
-};
-
-/**
- * Maps API paths to their handler functions
- */
-const createEndpointMap = (wallet: WalletInterface): Record<string, RequestHandler> => {
-  return {
-    // Action endpoints
-    '/createAction': createHandler<CreateActionArgs, any>(
-      (args, origin, wallet) => wallet.createAction(args, origin)
-    ),
-    '/signAction': createHandler<SignActionArgs, any>(
-      (args, origin, wallet) => wallet.signAction(args, origin)
-    ),
-    '/abortAction': createHandler<AbortActionArgs, any>(
-      (args, origin, wallet) => wallet.abortAction(args, origin)
-    ),
-    '/listActions': createHandler<ListActionsArgs, any>(
-      (args, origin, wallet) => wallet.listActions(args, origin)
-    ),
-    '/internalizeAction': createHandler<InternalizeActionArgs, any>(
-      (args, origin, wallet) => wallet.internalizeAction(args, origin)
-    ),
-
-    // Output endpoints
-    '/listOutputs': createHandler<ListOutputsArgs, any>(
-      (args, origin, wallet) => wallet.listOutputs(args, origin)
-    ),
-    '/relinquishOutput': createHandler<RelinquishOutputArgs, any>(
-      (args, origin, wallet) => wallet.relinquishOutput(args, origin)
-    ),
-
-    // Key endpoints
-    '/getPublicKey': createHandler<GetPublicKeyArgs, any>(
-      (args, origin, wallet) => wallet.getPublicKey(args, origin)
-    ),
-    '/revealCounterpartyKeyLinkage': createHandler<RevealCounterpartyKeyLinkageArgs, any>(
-      (args, origin, wallet) => wallet.revealCounterpartyKeyLinkage(args, origin)
-    ),
-    '/revealSpecificKeyLinkage': createHandler<RevealSpecificKeyLinkageArgs, any>(
-      (args, origin, wallet) => wallet.revealSpecificKeyLinkage(args, origin)
-    ),
-
-    // Encryption endpoints
-    '/encrypt': createHandler<WalletEncryptArgs, any>(
-      (args, origin, wallet) => wallet.encrypt(args, origin)
-    ),
-    '/decrypt': createHandler<WalletDecryptArgs, any>(
-      (args, origin, wallet) => wallet.decrypt(args, origin)
-    ),
-
-    // HMAC endpoints
-    '/createHmac': createHandler<CreateHmacArgs, any>(
-      (args, origin, wallet) => wallet.createHmac(args, origin)
-    ),
-    '/verifyHmac': createHandler<VerifyHmacArgs, any>(
-      (args, origin, wallet) => wallet.verifyHmac(args, origin)
-    ),
-
-    // Signature endpoints
-    '/createSignature': createHandler<CreateSignatureArgs, any>(
-      (args, origin, wallet) => wallet.createSignature(args, origin)
-    ),
-    '/verifySignature': createHandler<VerifySignatureArgs, any>(
-      (args, origin, wallet) => wallet.verifySignature(args, origin)
-    ),
-
-    // Certificate endpoints
-    '/acquireCertificate': createHandler<AcquireCertificateArgs, any>(
-      (args, origin, wallet) => wallet.acquireCertificate(args, origin)
-    ),
-    '/listCertificates': createHandler<ListCertificatesArgs, any>(
-      (args, origin, wallet) => wallet.listCertificates(args, origin)
-    ),
-    '/proveCertificate': createHandler<ProveCertificateArgs, any>(
-      (args, origin, wallet) => wallet.proveCertificate(args, origin)
-    ),
-    '/relinquishCertificate': createHandler<RelinquishCertificateArgs, any>(
-      (args, origin, wallet) => wallet.relinquishCertificate(args, origin)
-    ),
-
-    // Discovery endpoints
-    '/discoverByIdentityKey': createHandler<DiscoverByIdentityKeyArgs, any>(
-      (args, origin, wallet) => wallet.discoverByIdentityKey(args, origin)
-    ),
-    '/discoverByAttributes': createHandler<DiscoverByAttributesArgs, any>(
-      (args, origin, wallet) => wallet.discoverByAttributes(args, origin)
-    ),
-
-    // Auth endpoints
-    '/isAuthenticated': createHandler<{}, any>(
-      (args, origin, wallet) => wallet.isAuthenticated(args, origin)
-    ),
-    '/waitForAuthentication': createHandler<{}, any>(
-      (args, origin, wallet) => wallet.waitForAuthentication(args, origin)
-    ),
-
-    // Blockchain endpoints
-    '/getHeight': createHandler<{}, any>(
-      (args, origin, wallet) => wallet.getHeight(args, origin)
-    ),
-    '/getHeaderForHeight': createHandler<GetHeaderArgs, any>(
-      (args, origin, wallet) => wallet.getHeaderForHeight(args, origin)
-    ),
-    '/getNetwork': createHandler<{}, any>(
-      (args, origin, wallet) => wallet.getNetwork(args, origin)
-    ),
-    '/getVersion': createHandler<{}, any>(
-      (args, origin, wallet) => wallet.getVersion(args, origin)
-    ),
-  };
-};
-
-/**
- * Processes incoming HTTP requests, routes them to the appropriate handler,
- * and returns a formatted response
- */
-const processRequest = async (
-  req: WalletRequest, 
-  endpointMap: Record<string, RequestHandler>,
-  wallet: WalletInterface
-): Promise<WalletResponse> => {
-  try {
-    // Check for origin header
-    if (!req.headers['origin']) {
-      return {
-        request_id: req.request_id,
-        status: 400,
-        body: JSON.stringify({ message: 'Origin header is required' })
-      };
-    }
-
-    // Find appropriate handler for the path
-    const handler = endpointMap[req.path];
-    if (!handler) {
-      return {
-        request_id: req.request_id,
-        status: 404,
-        body: JSON.stringify({ error: 'Unknown wallet path: ' + req.path })
-      };
-    }
-
-    // Execute handler and return successful response
-    const result = await handler(req, wallet);
-    return {
-      request_id: req.request_id,
-      status: 200,
-      body: JSON.stringify(result)
-    };
-  } catch (error) {
-    // Handle errors with a 400 response
-    return {
-      request_id: req.request_id,
-      status: 400,
-      body: JSON.stringify({
-        message: error instanceof Error ? error.message : String(error)
-      })
-    };
-  }
-};
-
-/**
- * Normalizes request headers to lowercase
- */
-const normalizeRequestHeaders = (req: WalletRequest): WalletRequest => {
-  // Convert headers to lowercase map
-  const headers = Object.fromEntries(
-    (req.headers as unknown as string[][]).map(([k, v]) => [k.toLowerCase(), v])
-  );
-  
-  // Set origin from originator if it exists
-  if (headers.originator && !headers.origin) {
-    headers.origin = headers.originator;
-  }
-  
-  return { ...req, headers };
-};
-
-/**
- * Bridge between Tauri events and wallet functionality
- */
 export const WalletBridge = async (wallet: WalletInterface) => {
-  // Set up wallet for debugging
-  (window as any).externallyCallableWallet = wallet;
-  console.log('THE INTERFACE IS UP! WALLET:', wallet);
-  
-  // Create endpoint map once
-  const endpointMap = createEndpointMap(wallet);
+    (window as any).externallyCallableWallet = wallet // for debugging / testing
+    console.log('THE INTERFACE IS UP! WALLET:', wallet)
 
-  // Listen for HTTP requests from the Rust backend
-  await listen('http-request', async (event) => {
-    try {
-      // Parse and normalize the request
-      let req = JSON.parse(event.payload as string) as WalletRequest;
-      console.log("Received HTTP request:", {
-        method: req.method,
-        path: req.path,
-        request_id: req.request_id
-      });
-      
-      // Normalize headers
-      req = normalizeRequestHeaders(req);
-      
-      // Process the request
-      const response = await processRequest(req, endpointMap, wallet);
-      
-      // Send response back to Rust
-      emit('ts-response', response);
-    } catch (error) {
-      console.error("Error handling request:", error);
-    }
-  });
-};
+    // Listen for "http-request" events from the Rust backend.
+    await listen('http-request', async (event) => {
+        let response
+
+        try {
+        const req = JSON.parse(event.payload as string)
+        console.log("Received HTTP request:")
+        console.log("Method:", req.method)
+        console.log("Path:", req.path)
+        console.log("Headers:", req.headers)
+        console.log("Body:", req.body)
+        console.log("Request ID:", req.request_id)
+
+        req.headers = (req.headers as string[][]).map(([k, v]) => {
+            return [
+            k.toLowerCase(),
+            v
+            ]
+        })
+        req.headers = Object.fromEntries(req.headers)
+
+        if (req.headers.originator && !req.headers.origin) {
+            req.headers.origin = req.headers.originator
+        }
+
+        console.log(req.headers)
+
+        if (!req.headers['origin']) {
+            emit('ts-response', {
+            request_id: req.request_id,
+            status: 400,
+            body: JSON.stringify({ message: 'Origin header is required' })
+            })
+            return
+        }
+
+        switch (req.path) {
+            // 1. createAction
+            case '/createAction': {
+            try {
+                const args = JSON.parse(req.body) as CreateActionArgs;
+
+                const result = await wallet.createAction(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                if (typeof error === 'object' && error.constructor.name === 'WERR_REVIEW_ACTIONS') {
+                const e = new WERR_REVIEW_ACTIONS(
+                    error['reviewActionResults'],
+                    error['sendWithResults'],
+                    error['txid'],
+                    error['tx'],
+                    error['noSendChange'],
+                )
+                console.error('createAction WERR_REVIEW_ACTIONS:', e)
+                response = {
+                    request_id: req.request_id,
+                    status: 400,
+                    body: JSON.stringify(e)
+                }
+                } else {
+                console.error('createAction error:', error)
+                response = {
+                    request_id: req.request_id,
+                    status: 400,
+                    body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                    })
+                }
+                }
+            }
+            break
+            }
+
+            // 2. signAction
+            case '/signAction': {
+            try {
+                const args = JSON.parse(req.body) as SignActionArgs
+
+                const result = await wallet.signAction(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                if (typeof error === 'object' && error.constructor.name === 'WERR_REVIEW_ACTIONS') {
+                const e = new WERR_REVIEW_ACTIONS(
+                    error['reviewActionResults'],
+                    error['sendWithResults'],
+                    error['txid'],
+                    error['tx'],
+                )
+                console.error('signAction WERR_REVIEW_ACTIONS:', e)
+                response = {
+                    request_id: req.request_id,
+                    status: 400,
+                    body: JSON.stringify(e)
+                }
+                } else {
+                console.error('signAction error:', error)
+                response = {
+                    request_id: req.request_id,
+                    status: 400,
+                    body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                    })
+                }
+                }
+            }
+            break
+            }
+
+            // 3. abortAction
+            case '/abortAction': {
+            try {
+                const args = JSON.parse(req.body) as AbortActionArgs
+
+                const result = await wallet.abortAction(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('abortAction error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 4. listActions
+            case '/listActions': {
+            try {
+                const args = JSON.parse(req.body) as ListActionsArgs
+
+                const result = await wallet.listActions(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('listActions error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 5. internalizeAction
+            case '/internalizeAction': {
+            try {
+                const args = JSON.parse(req.body) as InternalizeActionArgs
+
+                const result = await wallet.internalizeAction(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('internalizeAction error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 6. listOutputs
+            case '/listOutputs': {
+            try {
+                const args = JSON.parse(req.body) as ListOutputsArgs
+
+                const result = await wallet.listOutputs(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('listOutputs error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 7. relinquishOutput
+            case '/relinquishOutput': {
+            try {
+                const args = JSON.parse(req.body) as RelinquishOutputArgs
+
+                const result = await wallet.relinquishOutput(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('relinquishOutput error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 8. getPublicKey
+            case '/getPublicKey': {
+            try {
+                const args = JSON.parse(req.body) as GetPublicKeyArgs
+
+                const result = await wallet.getPublicKey(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('getPublicKey error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 9. revealCounterpartyKeyLinkage
+            case '/revealCounterpartyKeyLinkage': {
+            try {
+                const args = JSON.parse(req.body) as RevealCounterpartyKeyLinkageArgs
+
+                const result = await wallet.revealCounterpartyKeyLinkage(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('revealCounterpartyKeyLinkage error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 10. revealSpecificKeyLinkage
+            case '/revealSpecificKeyLinkage': {
+            try {
+                const args = JSON.parse(req.body) as RevealSpecificKeyLinkageArgs
+
+                const result = await wallet.revealSpecificKeyLinkage(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('revealSpecificKeyLinkage error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 11. encrypt
+            case '/encrypt': {
+            try {
+                const args = JSON.parse(req.body) as WalletEncryptArgs
+
+                const result = await wallet.encrypt(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('encrypt error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 12. decrypt
+            case '/decrypt': {
+            try {
+                const args = JSON.parse(req.body) as WalletDecryptArgs
+
+                const result = await wallet.decrypt(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('decrypt error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 13. createHmac
+            case '/createHmac': {
+            try {
+                const args = JSON.parse(req.body) as CreateHmacArgs
+
+                const result = await wallet.createHmac(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('createHmac error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 14. verifyHmac
+            case '/verifyHmac': {
+            try {
+                const args = JSON.parse(req.body) as VerifyHmacArgs
+
+                const result = await wallet.verifyHmac(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('verifyHmac error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 15. createSignature
+            case '/createSignature': {
+            try {
+                const args = JSON.parse(req.body) as CreateSignatureArgs
+
+                const result = await wallet.createSignature(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('createSignature error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 16. verifySignature
+            case '/verifySignature': {
+            try {
+                const args = JSON.parse(req.body) as VerifySignatureArgs
+
+                const result = await wallet.verifySignature(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('verifySignature error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 17. acquireCertificate
+            case '/acquireCertificate': {
+            try {
+                const args = JSON.parse(req.body) as AcquireCertificateArgs
+
+                const result = await wallet.acquireCertificate(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('acquireCertificate error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 18. listCertificates
+            case '/listCertificates': {
+            try {
+                const args = JSON.parse(req.body) as ListCertificatesArgs
+
+                const result = await wallet.listCertificates(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('listCertificates error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 19. proveCertificate
+            case '/proveCertificate': {
+            try {
+                const args = JSON.parse(req.body) as ProveCertificateArgs
+
+                const result = await wallet.proveCertificate(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('proveCertificate error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 20. relinquishCertificate
+            case '/relinquishCertificate': {
+            try {
+                const args = JSON.parse(req.body) as RelinquishCertificateArgs
+
+                const result = await wallet.relinquishCertificate(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('relinquishCertificate error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 21. discoverByIdentityKey
+            case '/discoverByIdentityKey': {
+            try {
+                const args = JSON.parse(req.body) as DiscoverByIdentityKeyArgs
+
+                const result = await wallet.discoverByIdentityKey(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('discoverByIdentityKey error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 22. discoverByAttributes
+            case '/discoverByAttributes': {
+            try {
+                const args = JSON.parse(req.body) as DiscoverByAttributesArgs
+
+                const result = await wallet.discoverByAttributes(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('discoverByAttributes error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 23. isAuthenticated
+            case '/isAuthenticated': {
+            try {
+                const result = await wallet.isAuthenticated({}, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('isAuthenticated error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 24. waitForAuthentication
+            case '/waitForAuthentication': {
+            try {
+                const result = await wallet.waitForAuthentication({}, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('waitForAuthentication error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 25. getHeight
+            case '/getHeight': {
+            try {
+                const result = await wallet.getHeight({}, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('getHeight error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 26. getHeaderForHeight
+            case '/getHeaderForHeight': {
+            try {
+                const args = JSON.parse(req.body) as GetHeaderArgs
+
+                const result = await wallet.getHeaderForHeight(args, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('getHeaderForHeight error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 27. getNetwork
+            case '/getNetwork': {
+            try {
+                const result = await wallet.getNetwork({}, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('getNetwork error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            // 28. getVersion
+            case '/getVersion': {
+            try {
+                const result = await wallet.getVersion({}, req.headers['origin'])
+                response = {
+                request_id: req.request_id,
+                status: 200,
+                body: JSON.stringify(result),
+                }
+            } catch (error) {
+                console.error('getVersion error:', error)
+                response = {
+                request_id: req.request_id,
+                status: 400,
+                body: JSON.stringify({
+                    message: error instanceof Error ? error.message : String(error)
+                }),
+                }
+            }
+            break
+            }
+
+            default: {
+            response = {
+                request_id: req.request_id,
+                status: 404,
+                body: JSON.stringify({ error: 'Unknown wallet path: ' + req.path }),
+            }
+            break
+            }
+        }
+
+        // Emit the response back to Rust.
+        emit('ts-response', response)
+        } catch (e) {
+        console.error("Error handling http-request event:", e)
+        }
+    })
+}

@@ -17,9 +17,10 @@ import style from './style.js'
 import AmountDisplay from '../AmountDisplay/index.js'
 import { Send, Cancel } from '@mui/icons-material'
 import CustomDialog from '../CustomDialog/index.js'
-import { WalletContext } from '../../UserInterface.js'
+import { WalletContext } from '../../WalletContext.js'
 import AppChip from '../AppChip/index.js'
 import { PermissionEventHandler, PermissionRequest, Services } from '@bsv/wallet-toolbox-client'
+import { UserContext } from '../../UserContext.js'
 
 const services = new Services('main')
 
@@ -31,12 +32,14 @@ const SpendingAuthorizationHandler: React.FC<{
   setSpendingAuthorizationCallback: Dispatch<SetStateAction<PermissionEventHandler>>
 }> = ({ setSpendingAuthorizationCallback }) => {
   const {
-    onFocusRequested,
-    onFocusRelinquished,
-    isFocused,
     managers
   } = useContext(WalletContext)
-  const [usdPerBsv, setUsdPerBSV] = useState(70)
+  const {
+    onFocusRequested,
+    onFocusRelinquished,
+    isFocused
+  } = useContext(UserContext)
+  const [usdPerBsv, setUsdPerBSV] = useState(35)
   const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
   const [open, setOpen] = useState(false)
   const [perms, setPerms] = useState<Array<any>>([
