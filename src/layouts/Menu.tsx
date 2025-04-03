@@ -1,13 +1,6 @@
-import { useState, useRef, useEffect, useContext } from 'react'
-import { useBreakpoint } from '../../utils/useBreakpoints'
-import { Switch, Route, useHistory, Redirect } from 'react-router-dom'
-import style from '../../layouts/style.js'
-import { makeStyles } from '@mui/styles'
 import {
   Apps as BrowseIcon,
   Settings as SettingsIcon,
-  School as SchoolIcon,
-  Menu as MenuIcon,
   Badge as IdentityIcon,
   ExitToApp as LogoutIcon,
   Security as SecurityIcon
@@ -15,58 +8,42 @@ import {
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import {
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Typography,
-  IconButton,
   Drawer,
-  Toolbar,
   Box,
   Divider,
-  Paper
 } from '@mui/material'
-import Profile from '../../components/Profile.jsx'
-import { WalletContext } from '../../UserInterface'
-import PageLoading from '../../components/PageLoading.js'
-import Apps from './Apps'
-import App from './App/index.js'
+import Profile from '../components/Profile.jsx'
+import { useContext, useEffect } from 'react';
+import { useHistory } from 'react-router';
+import { WalletContext } from '../WalletContext.js';
+import { useBreakpoint } from '../utils/useBreakpoints.js';
 
-// pages
-import Trust from './Trust/index.js'
-import MyIdentity from './MyIdentity/index.js'
-import Settings from './Settings/index'
-import Security from './Security'
 
-const useStyles = makeStyles(style as any, {
-  name: 'Dashboard'
-})
+// Custom styling for menu items
+const menuItemStyle = (isSelected) => ({
+  borderRadius: '8px',
+  margin: '4px 8px',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: 'rgba(25, 118, 210, 0.1)',
+  },
+  ...(isSelected && {
+    backgroundColor: 'rgba(25, 118, 210, 0.12)',
+    '&:hover': {
+      backgroundColor: 'rgba(25, 118, 210, 0.2)',
+    },
+  }),
+});
 
-/**
- * Renders the Apps page and menu by default
- */
-const Dashboard = () => {
-  const breakpoints = useBreakpoint()
-  const classes = useStyles({ breakpoints })
+export default function Menu({ menuOpen, setMenuOpen, menuRef }) {
   const history = useHistory()
-  const { appName, appVersion, managers, logout } = useContext(WalletContext)
-  const [pageLoading, setPageLoading] = useState(true)
-  const [myIdentityKey, setMyIdentityKey] = useState('self')
-  const [menuOpen, setMenuOpen] = useState(true)
-  const menuRef = useRef(null)
-
-  // Helper functions
-  const handleDrawerToggle = () => {
-    setMenuOpen(!menuOpen)
-  }
-  const getMargin = () => {
-    if (menuOpen && !(breakpoints as any).sm) {
-      return '320px'
-    }
-    return '0px'
-  }
-
+  const breakpoints = useBreakpoint()
+  const { appName, appVersion, logout } = useContext(WalletContext)
+    
   // History.push wrapper
   const navigation = {
     push: (path) => {
@@ -106,76 +83,12 @@ const Dashboard = () => {
     }
   }, [menuOpen])
 
-  // Check if this is first login and redirect to settings if needed
-  useEffect(() => {
-    (async () => {
-      if (managers.walletManager!.authenticated) {
-        setPageLoading(false)
-        const { publicKey } = await managers.walletManager!.getPublicKey({ identityKey: true })
-        setMyIdentityKey(publicKey)
-
-        // Check if this is a first-time login
-        const isFirstTime = !localStorage.getItem('hasCompletedSetup');
-        if (isFirstTime) {
-          localStorage.setItem('hasCompletedSetup', 'true');
-          // Navigate to settings page for new users
-          history.push('/dashboard/settings');
-        }
-      }
-    })()
-  }, [managers, history])
-
-  if (pageLoading) {
-    return <PageLoading />
-  }
-
-  // Custom styling for menu items
-  const menuItemStyle = (isSelected) => ({
-    borderRadius: '8px',
-    margin: '4px 8px',
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      backgroundColor: 'rgba(25, 118, 210, 0.1)',
-    },
-    ...(isSelected && {
-      backgroundColor: 'rgba(25, 118, 210, 0.12)',
-      '&:hover': {
-        backgroundColor: 'rgba(25, 118, 210, 0.2)',
-      },
-    }),
-  });
-
   return (
-    <div className={classes.content_wrap} style={{ marginLeft: getMargin(), transition: 'margin 0.3s ease' }}>
-      <div style={{
-        marginLeft: 0,
-        width: menuOpen ? `calc(100vw - ${getMargin()})` : '100vw',
-        transition: 'width 0.3s ease, margin 0.3s ease'
-      }}>
-        {(breakpoints as any).sm &&
-          <div style={{ padding: '0.5em 0 0 0.5em' }} ref={menuRef}>
-            <Toolbar>
-              <IconButton
-                edge='start'
-                onClick={handleDrawerToggle}
-                aria-label='menu'
-                sx={{
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                  }
-                }}
-              >
-                <MenuIcon />
-              </IconButton>
-            </Toolbar>
-          </div>}
-      </div>
-      <Drawer
+    <Drawer
         anchor='left'
         open={menuOpen}
         variant='persistent'
-        onClose={handleDrawerToggle}
+        onClose={() => setMenuOpen(false)}
         sx={{
           width: 320,
           flexShrink: 0,
@@ -345,49 +258,5 @@ const Dashboard = () => {
           </Box>
         </Box>
       </Drawer>
-      <div className={classes.page_container}>
-        <Switch>
-          <Redirect from='/dashboard/counterparty/self' to={`/dashboard/counterparty/${myIdentityKey}`} />
-          <Redirect from='/dashboard/counterparty/anyone' to='/dashboard/counterparty/0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798' />
-          <Route
-            path='/dashboard/settings'
-            component={Settings}
-          />
-          <Route
-            path='/dashboard/identity'
-            component={MyIdentity}
-          />
-          <Route
-            path='/dashboard/trust'
-            component={Trust}
-          />
-          <Route
-            path='/dashboard/security'
-            component={Security}
-          />
-          <Route
-            path='/dashboard/apps'
-            component={Apps}
-          />
-          <Route
-            path='/dashboard/app'
-            component={App}
-          />
-          <Route
-            component={() => {
-              return (
-                <div className={classes.full_width} style={{ padding: '1em' }}>
-                  <br />
-                  <br />
-                  <Typography align='center' color='textPrimary'>Use the menu to select a page</Typography>
-                </div>
-              )
-            }}
-          />
-        </Switch>
-      </div>
-    </div>
   )
 }
-
-export default Dashboard
