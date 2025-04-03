@@ -3,7 +3,7 @@ import AmountDisplay from './AmountDisplay'
 // import confederacyHost from '../utils/confederacyHost'
 import { makeStyles } from '@mui/styles'
 import { Typography } from '@mui/material'
-import { WalletContext } from '../UserInterface'
+import { WalletContext } from '../WalletContext'
 
 const useStyles = makeStyles((theme: any) => ({
   content_wrap: {
