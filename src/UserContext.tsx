@@ -1,4 +1,4 @@
-import React, { createContext, useMemo } from 'react'
+import React, { createContext, Dispatch, SetStateAction, useMemo, useState } from 'react'
 import packageJson from '../package.json'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -30,6 +30,8 @@ export interface UserContextValue {
     onFocusRelinquished: () => Promise<void>;
     appVersion: string;
     appName: string;
+    basketAccessModalOpen: boolean;
+    setBasketAccessModalOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export const UserContext = createContext<UserContextValue>({} as UserContextValue);
@@ -45,14 +47,17 @@ export const UserContextProvider: React.FC<UserContextProps> = ({
     appName = 'Metanet Desktop',
     children
 }) => {
+    const [basketAccessModalOpen, setBasketAccessModalOpen] = useState(false)
 
     const userContext = useMemo(() => ({
         isFocused,
         onFocusRequested,
         onFocusRelinquished,
         appVersion,
-        appName
-    }), [appVersion, appName]);
+        appName,
+        basketAccessModalOpen,
+        setBasketAccessModalOpen
+    }), [appVersion, appName, basketAccessModalOpen]);
 
     return (
         <UserContext.Provider value={userContext}>

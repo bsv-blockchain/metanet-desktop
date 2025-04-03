@@ -31,8 +31,8 @@ if (rootElement) {
 
   root.render(
     <React.StrictMode>
-      <WalletContextProvider>
-        <UserContextProvider>
+      <UserContextProvider>
+        <WalletContextProvider>
           <ExchangeRateContextProvider>
             <Router>
               <BreakpointProvider queries={queries}>
@@ -50,8 +50,8 @@ if (rootElement) {
               </BreakpointProvider>
           </Router>
           </ExchangeRateContextProvider>
-        </UserContextProvider>
       </WalletContextProvider>
+      </UserContextProvider>
     </React.StrictMode>
   )
 }

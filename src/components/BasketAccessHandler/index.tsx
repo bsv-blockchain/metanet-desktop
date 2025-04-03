@@ -1,9 +1,9 @@
-import { useState, useEffect, useContext } from 'react'
+import { Dispatch, SetStateAction, useState, useEffect, useContext, FC } from 'react'
 import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
 import CustomDialog from '../CustomDialog'
 import AppChip from '../AppChip/index'
 import BasketChip from '../BasketChip/index'
-import { PermissionRequest } from '@bsv/wallet-toolbox-client'
+import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
 import { useTheme } from '@mui/material/styles'
 import Avatar from '@mui/material/Avatar'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
@@ -12,65 +12,10 @@ import { WalletContext } from '../../WalletContext'
 import { UserContext } from '../../UserContext'
 
 
-type BasketAccessRequest = {
-    requestID: string
-    basket?: string
-    originator: string
-    reason?: string
-    renewal?: boolean
-}
-
 const BasketAccessHandler = () => {
-    const { managers, setBasketAccessCallback } = useContext(WalletContext)
-    const { onFocusRequested, onFocusRelinquished, isFocused } = useContext(UserContext)
+    const { requests, advanceQueue, managers } = useContext(WalletContext)
+    const { basketAccessModalOpen } = useContext(UserContext)
     const theme = useTheme()
-
-    // Whether our dialog is open
-    const [open, setOpen] = useState(false)
-
-    // Track if we were originally focused
-    const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
-
-    // This array will queue up multiple requests
-    const [requests, setRequests] = useState<BasketAccessRequest[]>([])
-
-    // Provide a handler for basket-access requests that enqueues them
-    useEffect(() => {
-        setBasketAccessCallback((incomingRequest: PermissionRequest & {
-            requestID: string
-            basket?: string
-            originator: string
-            reason?: string
-            renewal?: boolean
-        }) => {
-            // Enqueue the new request
-            setRequests(prev => {
-                const wasEmpty = prev.length === 0
-
-                // If no requests were queued, handle focusing logic right away
-                if (wasEmpty) {
-                    isFocused().then(currentlyFocused => {
-                        setWasOriginallyFocused(currentlyFocused)
-                        if (!currentlyFocused) {
-                            onFocusRequested()
-                        }
-                        setOpen(true)
-                    })
-                }
-
-                return [
-                    ...prev,
-                    {
-                        requestID: incomingRequest.requestID,
-                        basket: incomingRequest.basket,
-                        originator: incomingRequest.originator,
-                        reason: incomingRequest.reason,
-                        renewal: incomingRequest.renewal
-                    }
-                ]
-            })
-        })
-    }, [isFocused, onFocusRequested, setBasketAccessCallback])
 
     // Handle denying the top request in the queue
     const handleDeny = async () => {
@@ -88,20 +33,6 @@ const BasketAccessHandler = () => {
             })
         }
         advanceQueue()
-    }
-
-    // Pop the first request from the queue, close if empty, relinquish focus if needed
-    const advanceQueue = () => {
-        setRequests(prev => {
-            const newQueue = prev.slice(1)
-            if (newQueue.length === 0) {
-                setOpen(false)
-                if (!wasOriginallyFocused) {
-                    onFocusRelinquished()
-                }
-            }
-            return newQueue
-        })
     }
 
     // If no current request, don't render anything
@@ -130,7 +61,7 @@ const BasketAccessHandler = () => {
 
     return (
         <CustomDialog
-            open={open}
+            open={basketAccessModalOpen}
             title={renewal ? 'Basket Access Renewal' : 'Basket Access Request'}
             onClose={handleDeny} // If the user closes via the X, treat as "deny"
             icon={<ShoppingBasketIcon fontSize="medium" />}

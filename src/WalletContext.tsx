@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, createContext, useMemo, useCallback, useContext } from 'react'
 import {
     Wallet,
     WalletPermissionsManager,
@@ -11,7 +11,8 @@ import {
     Services,
     StorageClient,
     TwilioPhoneInteractor,
-    WABClient
+    WABClient,
+    PermissionRequest
 } from '@bsv/wallet-toolbox-client'
 import {
     KeyDeriver,
@@ -25,6 +26,7 @@ import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { WalletBridge } from './wallet/interface'
 import { DEFAULT_WAB_URL, DEFAULT_STORAGE_URL, DEFAULT_CHAIN, ADMIN_ORIGINATOR } from './config'
+import { UserContext } from './UserContext'
 
 // Define a type for the config from WalletConfig component
 type WalletConfigType = {
@@ -60,6 +62,8 @@ export interface WalletContextValue {
     setBasketAccessCallback: (callback: PermissionEventHandler) => void
     setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
     snapshotLoaded: boolean
+    requests: BasketAccessRequest[]
+    advanceQueue: () => void
 }
 
 export const WalletContext = createContext<WalletContextValue>({
@@ -75,11 +79,22 @@ export const WalletContext = createContext<WalletContextValue>({
     setSpendingAuthorizationCallback: () => { },
     setBasketAccessCallback: () => { },
     setProtocolPermissionCallback: () => { },
-    snapshotLoaded: false
+    snapshotLoaded: false,
+    requests: [],
+    advanceQueue: () => { }
 })
 
 interface WalletContextProps {
     children?: React.ReactNode;
+}
+
+
+type BasketAccessRequest = {
+    requestID: string
+    basket?: string
+    originator: string
+    reason?: string
+    renewal?: boolean
 }
 
 export const WalletContextProvider: React.FC<WalletContextProps> = ({
@@ -88,6 +103,65 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     const [managers, setManagers] = useState<ManagerState>({});
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [adminOriginator, setAdminOriginator] = useState(ADMIN_ORIGINATOR);
+    const { isFocused, onFocusRequested, onFocusRelinquished, setBasketAccessModalOpen } = useContext(UserContext);
+
+    // Track if we were originally focused
+    const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
+
+    // This array will queue up multiple requests
+    const [requests, setRequests] = useState<BasketAccessRequest[]>([])
+
+    // Pop the first request from the queue, close if empty, relinquish focus if needed
+    const advanceQueue = () => {
+        setRequests(prev => {
+            const newQueue = prev.slice(1)
+            if (newQueue.length === 0) {
+                setBasketAccessModalOpen(false)
+                if (!wasOriginallyFocused) {
+                    onFocusRelinquished()
+                }
+            }
+            return newQueue
+        })
+    }
+
+    // Provide a handler for basket-access requests that enqueues them
+    useEffect(() => {
+        setBasketAccessCallback(async (incomingRequest: PermissionRequest & {
+            requestID: string
+            basket?: string
+            originator: string
+            reason?: string
+            renewal?: boolean
+        }) => {
+            // Enqueue the new request
+            setRequests(prev => {
+                const wasEmpty = prev.length === 0
+
+                // If no requests were queued, handle focusing logic right away
+                if (wasEmpty) {
+                    isFocused().then(currentlyFocused => {
+                        setWasOriginallyFocused(currentlyFocused)
+                        if (!currentlyFocused) {
+                            onFocusRequested()
+                        }
+                        setBasketAccessModalOpen(true)
+                    })
+                }
+
+                return [
+                    ...prev,
+                    {
+                        requestID: incomingRequest.requestID,
+                        basket: incomingRequest.basket,
+                        originator: incomingRequest.originator,
+                        reason: incomingRequest.reason,
+                        renewal: incomingRequest.renewal
+                    }
+                ]
+            })
+        })
+    }, [isFocused, onFocusRequested])
 
     const updateSettings = useCallback(async (newSettings: WalletSettings) => {
         if (!managers.settingsManager) {
@@ -419,7 +493,9 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         setSpendingAuthorizationCallback,
         setBasketAccessCallback,
         setProtocolPermissionCallback,
-        setCertificateAccessCallback
+        setCertificateAccessCallback,
+        requests,
+        advanceQueue
     }), [
         managers,
         settings,
