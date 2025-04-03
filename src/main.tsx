@@ -1,41 +1,58 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { UserInterface } from './UserInterface'
+import { WalletContextProvider } from './WalletContext'
+import { UserContextProvider } from './UserContext'
+import { HashRouter as Router, Route, Switch } from 'react-router-dom'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { BreakpointProvider } from './utils/useBreakpoints'
+import { ExchangeRateContextProvider } from './components/AmountDisplay/ExchangeRateContextProvider'
+import { AppThemeProvider } from './components/Theme'
 
-import { listen, emit } from '@tauri-apps/api/event'
-import { invoke } from '@tauri-apps/api/core'
-import { WalletContextProvider } from './WalletContext';
+import Greeter from './pages/Greeter'
+import Dashboard from './pages/Dashboard'
+import LostPhone from './pages/Recovery/LostPhone'
+import LostPassword from './pages/Recovery/LostPassword'
+import Recovery from './pages/Recovery'
 
-// 1. Our Tauri commands exposed as async calls:
-async function isFocused(): Promise<boolean> {
-  return invoke<boolean>('is_focused')
-}
+import AuthRedirector from './components/AuthRedirector.js'
 
-async function requestFocus(): Promise<void> {
-  return invoke<void>('request_focus')
-}
-
-async function relinquishFocus(): Promise<void> {
-  return invoke<void>('relinquish_focus')
+// Define queries for responsive design
+const queries = {
+    xs: '(max-width: 500px)',
+    sm: '(max-width: 720px)',
+    md: '(max-width: 1024px)',
+    or: '(orientation: portrait)'
 }
 
 // 2. Create the root and render:
 const rootElement = document.getElementById('root')
-const root = createRoot(rootElement!)
+if (rootElement) {
+  const root = createRoot(rootElement)
 
-
-
-root.render(
-  <React.StrictMode>
-    <WalletContextProvider>
-    <UserInterface
-      // Pass them as props so they can be injected into the context
-      isFocused={isFocused}
-      requestFocus={requestFocus}
-      relinquishFocus={relinquishFocus}
-
-      onWalletReady={walletBridge}
-    />
-    </WalletContextProvider>
-  </React.StrictMode>
-)
+  root.render(
+    <React.StrictMode>
+      <WalletContextProvider>
+        <UserContextProvider>
+          <ExchangeRateContextProvider>
+            <Router>
+              <AuthRedirector />
+              <BreakpointProvider queries={queries}>
+                <AppThemeProvider>
+                  <ToastContainer position='top-center' />
+                  <Switch>
+                    <Route exact path='/' component={Greeter} />
+                    <Route path='/dashboard' component={Dashboard} />
+                    <Route exact path='/recovery/lost-phone' component={LostPhone} />
+                    <Route exact path='/recovery/lost-password' component={LostPassword} />
+                    <Route exact path='/recovery' component={Recovery} />
+                  </Switch>
+                </AppThemeProvider>
+              </BreakpointProvider>
+          </Router>
+          </ExchangeRateContextProvider>
+        </UserContextProvider>
+      </WalletContextProvider>
+    </React.StrictMode>
+  )
+}

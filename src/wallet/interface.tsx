@@ -269,8 +269,8 @@ export const WalletBridge = async (wallet: WalletInterface) => {
       
       // Send response back to Rust
       emit('ts-response', response);
-    } catch (e) {
-      console.error("Error handling http-request event:", e);
+    } catch (error) {
+      console.error("Error handling request:", error);
     }
   });
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, createContext, useMemo, useCallback } from 'react'
 import {
     Wallet,
     WalletPermissionsManager,
@@ -20,41 +20,17 @@ import {
     Utils,
     LookupResolver
 } from '@bsv/sdk'
-import RecoveryKeyHandler from './components/RecoveryKeyHandler'
-import PasswordHandler from './components/PasswordHandler'
-import SpendingAuthorizationHandler from './components/SpendingAuthorizationHandler'
-import ProtocolPermissionHandler from './components/ProtocolPermissionHandler'
-import CertificateAccessHandler from './components/CertificateAccessHandler'
-import BasketAccessHandler from './components/BasketAccessHandler'
-import { AppThemeProvider } from "./components/Theme";
-import { ExchangeRateContextProvider } from './components/AmountDisplay/ExchangeRateContextProvider'
 import { DEFAULT_SETTINGS, WalletSettings, WalletSettingsManager } from '@bsv/wallet-toolbox-client/out/src/WalletSettingsManager'
-import { HashRouter as Router, Route, Switch, useHistory } from 'react-router-dom'
-import { ToastContainer, toast } from 'react-toastify'
+import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import { BreakpointProvider } from './utils/useBreakpoints'
-
-import Greeter from './pages/Greeter'
-import LostPhone from './pages/Recovery/LostPhone'
-import LostPassword from './pages/Recovery/LostPassword'
-import Dashboard from './pages/Dashboard'
-import Recovery from './pages/Recovery'
-import { DEFAULT_WAB_URL, DEFAULT_STORAGE_URL, DEFAULT_CHAIN } from './config'
-import packageJson from '../package.json'
+import { WalletBridge } from './wallet/interface'
+import { DEFAULT_WAB_URL, DEFAULT_STORAGE_URL, DEFAULT_CHAIN, ADMIN_ORIGINATOR } from './config'
 
 // Define a type for the config from WalletConfig component
 type WalletConfigType = {
     wabUrl: string;
     selectedAuthMethod: string;
     selectedNetwork: 'main' | 'test';
-}
-
-/** Queries for responsive design */
-const queries = {
-    xs: '(max-width: 500px)',
-    sm: '(max-width: 720px)',
-    md: '(max-width: 1024px)',
-    or: '(orientation: portrait)'
 }
 
 // -----
@@ -71,14 +47,6 @@ export interface WalletContextValue {
     // Managers:
     managers: ManagerState;
     updateManagers: (newManagers: ManagerState) => void;
-    // Focus APIs:
-    isFocused: () => Promise<boolean>;
-    onFocusRequested: () => Promise<void>;
-    onFocusRelinquished: () => Promise<void>;
-    // App configuration:
-    appVersion: string;
-    appName: string;
-    adminOriginator: string;
     // Settings
     settings: WalletSettings;
     updateSettings: (newSettings: WalletSettings) => Promise<void>;
@@ -90,46 +58,18 @@ export interface WalletContextValue {
 export const WalletContext = createContext<WalletContextValue>({
     managers: {},
     updateManagers: () => { },
-    isFocused: async () => false,
-    onFocusRequested: async () => { },
-    onFocusRelinquished: async () => { },
-    appVersion: packageJson.version,
-    appName: 'Metanet Desktop',
-    adminOriginator: 'admin.com',
     settings: DEFAULT_SETTINGS,
     updateSettings: async () => { },
     network: 'mainnet',
-    logout: () => { }
+    logout: () => { },
 })
 
-// -----
-// UserInterface Component Props
-// -----
-interface UserInterfaceProps {
-    onWalletReady: (wallet: any) => void;
-    // Focus-handling props:
-    isFocused?: () => Promise<boolean>;
-    requestFocus?: () => Promise<void>;
-    relinquishFocus?: () => Promise<void>;
-    adminOriginator?: string;
-    appVersion?: string;
-    appName?: string;
+interface WalletContextProps {
+    children?: React.ReactNode;
 }
 
-/**
- * The UserInterface component supports both new and returning users.
- * For returning users, if a snapshot exists it is loaded and once authenticated
- * the AuthRedirector (inside Router) sends them to the dashboard.
- * New users see the WalletConfig UI.
- */
-export const UserInterface: React.FC<UserInterfaceProps> = ({
-    onWalletReady,
-    isFocused,
-    requestFocus,
-    relinquishFocus,
-    adminOriginator = 'admin.com',
-    appVersion = packageJson.version,
-    appName = 'Metanet Desktop'
+export const WalletContextProvider: React.FC<WalletContextProps> = ({
+    children
 }) => {
     const [managers, setManagers] = useState<ManagerState>({});
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -281,7 +221,7 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
             await storageManager.addWalletStorageProvider(client);
 
             // Setup permissions with provided callbacks.
-            const permissionsManager = new WalletPermissionsManager(wallet, adminOriginator, {
+            const permissionsManager = new WalletPermissionsManager(wallet, ADMIN_ORIGINATOR, {
                 seekPermissionsForPublicKeyRevelation: false,
                 seekProtocolPermissionsForSigning: false,
                 seekProtocolPermissionsForEncrypting: false,
@@ -318,7 +258,7 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
     }, [
         selectedNetwork,
         selectedStorageUrl,
-        adminOriginator,
+        ADMIN_ORIGINATOR,
         protocolPermissionCallback,
         basketAccessCallback,
         spendingAuthorizationCallback,
@@ -371,7 +311,7 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
 
                 // Create the wallet manager with proper error handling
                 const exampleWalletManager = new WalletAuthenticationManager(
-                    adminOriginator,
+                    ADMIN_ORIGINATOR,
                     buildWallet,
                     new OverlayUMPTokenInteractor(
                         resolver,
@@ -392,8 +332,8 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
 
                 // Fire the parent callback to let parent components know
                 // that the wallet is ready
-                if (onWalletReady) {
-                    onWalletReady(exampleWalletManager);
+                if (WalletBridge) {
+                    WalletBridge(exampleWalletManager);
                 }
 
                 // Load snapshot if available
@@ -413,10 +353,10 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         managers.walletManager,
         selectedNetwork,
         wabUrl,
-        adminOriginator,
-        onWalletReady,
+        WalletBridge,
         buildWallet,
-        loadWalletSnapshot
+        loadWalletSnapshot,
+        ADMIN_ORIGINATOR
     ]);
 
     // When Settings manager becomes available, populate the user's settings
@@ -435,9 +375,6 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         loadSettings();
     }, [managers]);
 
-    // For new users, show the WalletConfig if no snapshot exists.
-    const noManagerYet = !managers.walletManager;
-
     const logout = useCallback(() => {
         // Clear localStorage to prevent auto-login
         if (localStorage.snap) {
@@ -452,73 +389,22 @@ export const UserInterface: React.FC<UserInterfaceProps> = ({
         setSnapshotLoaded(false);
     }, []);
 
-    const contextValue = useMemo(() => ({
+    const wallet = useMemo(() => ({
         managers,
         updateManagers: (newManagers: ManagerState) => setManagers(prev => ({ ...prev, ...newManagers })),
-        isFocused: isFocused || (() => Promise.resolve(true)),
-        onFocusRequested: requestFocus || (() => Promise.resolve()),
-        onFocusRelinquished: relinquishFocus || (() => Promise.resolve()),
-        appName,
-        appVersion,
-        adminOriginator,
         settings,
         updateSettings,
         network: selectedNetwork === 'main' ? 'mainnet' : 'testnet' as 'mainnet' | 'testnet',
         logout
     }), [
         managers,
-        isFocused,
-        requestFocus,
-        relinquishFocus,
-        appName,
-        appVersion,
-        adminOriginator,
         settings,
         updateSettings,
         selectedNetwork,
         logout
     ]);
 
-    return (
-        <WalletContext.Provider
-            value={contextValue}
-        >
-            <Router>
-                {/* This component handles redirecting once the snapshot is loaded and authentication is valid */}
-                <AuthRedirector snapshotLoaded={snapshotLoaded} />
-                <ExchangeRateContextProvider>
-                    <BreakpointProvider queries={queries}>
-                        <AppThemeProvider>
-                            <ToastContainer position='top-center' />
-                            {/* Setup core handlers */}
-                            <PasswordHandler setPasswordRetriever={setPasswordRetriever} />
-                            <RecoveryKeyHandler setRecoveryKeySaver={setRecoveryKeySaver} />
-                            <SpendingAuthorizationHandler
-                                setSpendingAuthorizationCallback={setSpendingAuthorizationCallback}
-                            />
-                            <BasketAccessHandler
-                                setBasketAccessHandler={setBasketAccessCallback}
-                            />
-                            <ProtocolPermissionHandler
-                                setProtocolPermissionCallback={setProtocolPermissionCallback}
-                            />
-                            <CertificateAccessHandler
-                                setCertificateAccessHandler={setCertificateAccessCallback}
-                            />
-                            {/* When a wallet manager exists, render the app routes */}
-                            {managers.walletManager && (
-                                <Switch>
-                                    <Route exact path='/' component={Greeter} />
-                                    <Route exact path='/recovery/lost-phone' component={LostPhone} />
-                                    <Route exact path='/recovery/lost-password' component={LostPassword} />
-                                    <Route exact path='/recovery' component={Recovery} />
-                                    <Route path='/dashboard' component={Dashboard} />
-                                </Switch>
-                            )}
-                        </AppThemeProvider>
-                    </BreakpointProvider>
-                </ExchangeRateContextProvider>
-            </Router>
-        </WalletContext.Provider>
-    )
+    return <WalletContext.Provider value={wallet}>
+        {children}
+    </WalletContext.Provider>
 }
