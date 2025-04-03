@@ -15,8 +15,6 @@ import LostPhone from './pages/Recovery/LostPhone'
 import LostPassword from './pages/Recovery/LostPassword'
 import Recovery from './pages/Recovery'
 
-import AuthRedirector from './components/AuthRedirector.js'
-
 // Define queries for responsive design
 const queries = {
     xs: '(max-width: 500px)',
@@ -36,7 +34,6 @@ if (rootElement) {
         <UserContextProvider>
           <ExchangeRateContextProvider>
             <Router>
-              <AuthRedirector />
               <BreakpointProvider queries={queries}>
                 <AppThemeProvider>
                   <ToastContainer position='top-center' />

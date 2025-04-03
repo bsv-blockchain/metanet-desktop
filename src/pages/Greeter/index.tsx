@@ -237,7 +237,7 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
 
 // Main Greeter component with reduced complexity
 const Greeter: React.FC<any> = ({ history }) => {
-  const { managers } = useContext(WalletContext)
+  const { managers, snapshotLoaded } = useContext(WalletContext)
   const { appVersion, appName } = useContext(UserContext)
   const theme = useTheme()
 
@@ -314,14 +314,13 @@ const Greeter: React.FC<any> = ({ history }) => {
   }
 
   useEffect(() => {
-    (async () => {
-      // If the user is already authenticated, skip to dashboard
-      if (walletManager?.authenticated) {
-        history.push('/dashboard/apps')
-      }
-      setPageLoaded(true)
-    })()
-  }, [history, walletManager])
+        if (
+            managers?.walletManager?.authenticated && snapshotLoaded
+        ) {
+            history.push('/dashboard/apps')
+            setPageLoaded(true)
+        }
+    }, [managers?.walletManager?.authenticated, snapshotLoaded, history])
 
   // Force the manager to use the "presentation-key-and-password" flow:
   useEffect(() => {
