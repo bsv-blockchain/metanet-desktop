@@ -59,6 +59,7 @@ export interface WalletContextValue {
     setSpendingAuthorizationCallback: (callback: PermissionEventHandler) => void
     setBasketAccessCallback: (callback: PermissionEventHandler) => void
     setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
+    snapshotLoaded: boolean
 }
 
 export const WalletContext = createContext<WalletContextValue>({
@@ -73,7 +74,8 @@ export const WalletContext = createContext<WalletContextValue>({
     setRecoveryKeySaver: () => { },
     setSpendingAuthorizationCallback: () => { },
     setBasketAccessCallback: () => { },
-    setProtocolPermissionCallback: () => { }
+    setProtocolPermissionCallback: () => { },
+    snapshotLoaded: false
 })
 
 interface WalletContextProps {
@@ -411,6 +413,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         network: selectedNetwork === 'main' ? 'mainnet' : 'testnet' as 'mainnet' | 'testnet',
         logout,
         adminOriginator: ADMIN_ORIGINATOR,
+        snapshotLoaded,
         setPasswordRetriever,
         setRecoveryKeySaver,
         setSpendingAuthorizationCallback,
