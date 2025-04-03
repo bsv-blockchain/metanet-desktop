@@ -221,17 +221,6 @@ const Apps: React.FC<AppsProps> = ({ history }) => {
             setRefresh={setRefresh}
           />
         </Grid>
-
-        {/* Another component for app details or usage stats */}
-        <Grid item lg={6} md={6} xs={12}>
-          <h1>Access at a Glance coming soon</h1>
-          {/* <AccessAtAGlance
-            originator={appDomain}
-            loading={loading}
-            setRefresh={setRefresh}
-            history={history}
-          /> */}
-        </Grid>
       </Grid>
     </Grid>
   );
