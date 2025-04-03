@@ -498,6 +498,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         updateSettings,
         selectedNetwork,
         logout,
+        requests,
     ]);
 
     return <WalletContext.Provider value={wallet}>
