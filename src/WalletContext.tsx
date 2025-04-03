@@ -153,8 +153,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         originator: string
         reason?: string
         renewal?: boolean
-    }, ...args: any) => {
-        console.log({ incomingRequest })
+    }) => {
         // Enqueue the new request
         if(incomingRequest?.requestID) {
             setRequests(prev => {
