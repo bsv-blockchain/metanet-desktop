@@ -1,9 +1,9 @@
-import { Dispatch, SetStateAction, useState, useEffect, useContext, FC } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { DialogContent, DialogActions, Button, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
 import CustomDialog from '../CustomDialog'
 import AppChip from '../AppChip/index'
 import BasketChip from '../BasketChip/index'
-import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
+import { PermissionRequest } from '@bsv/wallet-toolbox-client'
 import { useTheme } from '@mui/material/styles'
 import Avatar from '@mui/material/Avatar'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
@@ -20,10 +20,8 @@ type BasketAccessRequest = {
     renewal?: boolean
 }
 
-const BasketAccessHandler: FC<{
-    setBasketAccessHandler: Dispatch<SetStateAction<PermissionEventHandler>>
-}> = ({ setBasketAccessHandler }) => {
-    const { managers } = useContext(WalletContext)
+const BasketAccessHandler = () => {
+    const { managers, setBasketAccessCallback } = useContext(WalletContext)
     const { onFocusRequested, onFocusRelinquished, isFocused } = useContext(UserContext)
     const theme = useTheme()
 
@@ -38,43 +36,41 @@ const BasketAccessHandler: FC<{
 
     // Provide a handler for basket-access requests that enqueues them
     useEffect(() => {
-        setBasketAccessHandler(() => {
-            return async (incomingRequest: PermissionRequest & {
-                requestID: string
-                basket?: string
-                originator: string
-                reason?: string
-                renewal?: boolean
-            }) => {
-                // Enqueue the new request
-                setRequests(prev => {
-                    const wasEmpty = prev.length === 0
+        setBasketAccessCallback((incomingRequest: PermissionRequest & {
+            requestID: string
+            basket?: string
+            originator: string
+            reason?: string
+            renewal?: boolean
+        }) => {
+            // Enqueue the new request
+            setRequests(prev => {
+                const wasEmpty = prev.length === 0
 
-                    // If no requests were queued, handle focusing logic right away
-                    if (wasEmpty) {
-                        isFocused().then(currentlyFocused => {
-                            setWasOriginallyFocused(currentlyFocused)
-                            if (!currentlyFocused) {
-                                onFocusRequested()
-                            }
-                            setOpen(true)
-                        })
-                    }
-
-                    return [
-                        ...prev,
-                        {
-                            requestID: incomingRequest.requestID,
-                            basket: incomingRequest.basket,
-                            originator: incomingRequest.originator,
-                            reason: incomingRequest.reason,
-                            renewal: incomingRequest.renewal
+                // If no requests were queued, handle focusing logic right away
+                if (wasEmpty) {
+                    isFocused().then(currentlyFocused => {
+                        setWasOriginallyFocused(currentlyFocused)
+                        if (!currentlyFocused) {
+                            onFocusRequested()
                         }
-                    ]
-                })
-            }
+                        setOpen(true)
+                    })
+                }
+
+                return [
+                    ...prev,
+                    {
+                        requestID: incomingRequest.requestID,
+                        basket: incomingRequest.basket,
+                        originator: incomingRequest.originator,
+                        reason: incomingRequest.reason,
+                        renewal: incomingRequest.renewal
+                    }
+                ]
+            })
         })
-    }, [isFocused, onFocusRequested, setBasketAccessHandler])
+    }, [isFocused, onFocusRequested, setBasketAccessCallback])
 
     // Handle denying the top request in the queue
     const handleDeny = async () => {

@@ -47,7 +47,7 @@ export default function Dashboard() {
   // Check if this is first login and redirect to settings if needed
   useEffect(() => {
     (async () => {
-      if (managers.walletManager.authenticated) {
+      if (managers?.walletManager?.authenticated) {
         setPageLoading(false)
         const { publicKey } = await managers.walletManager.getPublicKey({ identityKey: true })
         setMyIdentityKey(publicKey)
