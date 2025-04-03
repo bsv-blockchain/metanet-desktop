@@ -59,7 +59,6 @@ export interface WalletContextValue {
     setPasswordRetriever: (retriever: (reason: string, test: (passwordCandidate: string) => boolean) => Promise<string>) => void
     setRecoveryKeySaver: (saver: (key: number[]) => Promise<true>) => void
     setSpendingAuthorizationCallback: (callback: PermissionEventHandler) => void
-    setBasketAccessCallback: (callback: PermissionEventHandler) => void
     setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
     snapshotLoaded: boolean
     requests: BasketAccessRequest[]
@@ -77,7 +76,6 @@ export const WalletContext = createContext<WalletContextValue>({
     setPasswordRetriever: () => { },
     setRecoveryKeySaver: () => { },
     setSpendingAuthorizationCallback: () => { },
-    setBasketAccessCallback: () => { },
     setProtocolPermissionCallback: () => { },
     snapshotLoaded: false,
     requests: [],
@@ -142,8 +140,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     >();
     const [spendingAuthorizationCallback, setSpendingAuthorizationCallback] =
         useState<PermissionEventHandler>(() => { });
-    const [basketAccessCallback, setBasketAccessCallback] =
-        useState<PermissionEventHandler>(() => { });
     const [protocolPermissionCallback, setProtocolPermissionCallback] =
         useState<PermissionEventHandler>(() => { });
     const [certificateAccessCallback, setCertificateAccessCallback] =
@@ -151,45 +147,42 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
 
 
     // Provide a handler for basket-access requests that enqueues them
-    useEffect(() => {
-        setBasketAccessCallback((incomingRequest: PermissionRequest & {
-                requestID: string
-                basket?: string
-                originator: string
-                reason?: string
-                renewal?: boolean
-            }, ...args: any) => {
-                console.log({ incomingRequest })
-                // Enqueue the new request
-                if(incomingRequest?.requestID) {
-                    setRequests(prev => {
-                        const wasEmpty = prev.length === 0
+    const basketAccessCallback = useCallback((incomingRequest: PermissionRequest & {
+        requestID: string
+        basket?: string
+        originator: string
+        reason?: string
+        renewal?: boolean
+    }, ...args: any) => {
+        console.log({ incomingRequest })
+        // Enqueue the new request
+        if(incomingRequest?.requestID) {
+            setRequests(prev => {
+                const wasEmpty = prev.length === 0
 
-                        // If no requests were queued, handle focusing logic right away
-                        if (wasEmpty) {
-                            isFocused().then(currentlyFocused => {
-                                setWasOriginallyFocused(currentlyFocused)
-                                if (!currentlyFocused) {
-                                    onFocusRequested()
-                                }
-                                setBasketAccessModalOpen(true)
-                            })
+                // If no requests were queued, handle focusing logic right away
+                if (wasEmpty) {
+                    isFocused().then(currentlyFocused => {
+                        setWasOriginallyFocused(currentlyFocused)
+                        if (!currentlyFocused) {
+                            onFocusRequested()
                         }
-
-                        return [
-                            ...prev,
-                            {
-                                requestID: incomingRequest.requestID,
-                                basket: incomingRequest.basket,
-                                originator: incomingRequest.originator,
-                                reason: incomingRequest.reason,
-                                renewal: incomingRequest.renewal
-                            }
-                        ]
+                        setBasketAccessModalOpen(true)
                     })
                 }
-            }
-        )
+
+                return [
+                    ...prev,
+                    {
+                        requestID: incomingRequest.requestID,
+                        basket: incomingRequest.basket,
+                        originator: incomingRequest.originator,
+                        reason: incomingRequest.reason,
+                        renewal: incomingRequest.renewal
+                    }
+                ]
+            })
+        }
     }, [isFocused, onFocusRequested])
 
     // ---- WAB + network + storage configuration ----
@@ -496,7 +489,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         setPasswordRetriever,
         setRecoveryKeySaver,
         setSpendingAuthorizationCallback,
-        setBasketAccessCallback,
         setProtocolPermissionCallback,
         setCertificateAccessCallback,
         requests,

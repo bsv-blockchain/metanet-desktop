@@ -5,7 +5,7 @@ import { useTheme, makeStyles } from '@mui/styles'
 import style from './style'
 import CounterpartyChip from '../CounterpartyChip'
 import { Base64String } from '@bsv/sdk'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
 import DeleteIcon from '@mui/icons-material/Delete'
 
 const useStyles = makeStyles(style, {
