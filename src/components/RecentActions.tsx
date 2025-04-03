@@ -1,7 +1,9 @@
 import { FC } from 'react';
-import { Typography, Button, LinearProgress } from '@mui/material';
+import { Typography, Button, LinearProgress, Box } from '@mui/material';
 import Action from './Action';
 import { WalletAction } from '@bsv/sdk';
+import PageLoading from './PageLoading';
+import AppLogo from './AppLogo';
 
 // Import the TransformedWalletAction interface
 interface TransformedWalletAction extends WalletAction {
@@ -36,7 +38,7 @@ const RecentActions: FC<RecentActionsProps> = ({
       >
         Recent Actions
       </Typography>
-      {appActions &&
+      {appActions ?
         appActions.map((action, index) => {
           const actionToDisplay = {
             txid: action.txid,
@@ -47,17 +49,16 @@ const RecentActions: FC<RecentActionsProps> = ({
             fees: action.fees?.toString()
           };
           return <Action key={index} {...actionToDisplay} />
-        })}
-      {appActions && appActions.length === 0 && (
-        <Typography
-          color="textSecondary"
-          align="center"
-          style={{ paddingTop: '6em' }}
-        >
-          You haven't made any actions yet.
-        </Typography>
-      )}
-      {loading && <LinearProgress style={{ paddingTop: '1em' }} />}
+        }) : !loading && (
+          <Typography
+              color="textSecondary"
+              align="center"
+              style={{ paddingTop: '6em' }}
+            >
+              You haven't made any actions yet.
+            </Typography>
+        )}
+      {loading && <Box p={3} display="flex" justifyContent="center" alignItems="center"><AppLogo rotate size={100} /></Box>}
       {appActions && appActions.length !== 0 && (
         <center style={{ paddingTop: '1em' }}>
           {allActionsShown ? (
