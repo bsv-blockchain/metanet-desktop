@@ -109,7 +109,7 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
       gap: 1,
       position: 'relative'
     }}>
-      <Typography variant='h5'>
+      <Typography variant="h5" fontWeight="bold">
         {certName}
       </Typography>
 
