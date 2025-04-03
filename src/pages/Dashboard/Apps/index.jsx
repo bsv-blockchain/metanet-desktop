@@ -9,7 +9,7 @@ import isImageUrl from '../../../utils/isImageUrl'
 import Fuse from 'fuse.js'
 // import POPULAR_APPS from '../../../constants/popularApps'
 import getApps from './getApps'
-import { WalletContext } from '../../../UserInterface'
+import { WalletContext } from '../../../WalletContext'
 
 const Apps = () => {
   const theme = useTheme()

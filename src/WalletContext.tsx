@@ -54,6 +54,11 @@ export interface WalletContextValue {
     // Logout
     logout: () => void;
     adminOriginator: string;
+    setPasswordRetriever: (retriever: (reason: string, test: (passwordCandidate: string) => boolean) => Promise<string>) => void
+    setRecoveryKeySaver: (saver: (key: number[]) => Promise<true>) => void
+    setSpendingAuthorizationCallback: (callback: PermissionEventHandler) => void
+    setBasketAccessCallback: (callback: PermissionEventHandler) => void
+    setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
 }
 
 export const WalletContext = createContext<WalletContextValue>({
@@ -63,7 +68,12 @@ export const WalletContext = createContext<WalletContextValue>({
     updateSettings: async () => { },
     network: 'mainnet',
     logout: () => { },
-    adminOriginator: ADMIN_ORIGINATOR
+    adminOriginator: ADMIN_ORIGINATOR,
+    setPasswordRetriever: () => { },
+    setRecoveryKeySaver: () => { },
+    setSpendingAuthorizationCallback: () => { },
+    setBasketAccessCallback: () => { },
+    setProtocolPermissionCallback: () => { }
 })
 
 interface WalletContextProps {
@@ -75,6 +85,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
 }) => {
     const [managers, setManagers] = useState<ManagerState>({});
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+    const [adminOriginator, setAdminOriginator] = useState(ADMIN_ORIGINATOR);
 
     const updateSettings = useCallback(async (newSettings: WalletSettings) => {
         if (!managers.settingsManager) {
@@ -260,7 +271,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     }, [
         selectedNetwork,
         selectedStorageUrl,
-        ADMIN_ORIGINATOR,
+        adminOriginator,
         protocolPermissionCallback,
         basketAccessCallback,
         spendingAuthorizationCallback,
@@ -285,13 +296,14 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
 
     // ---- Build the wallet manager once all required inputs are ready.
     useEffect(() => {
+        console.log('building the wallet for the first time', passwordRetriever, recoveryKeySaver, configComplete, managers.walletManager, adminOriginator)
         if (
-            passwordRetriever &&
-            recoveryKeySaver &&
             configComplete && // either user configured or snapshot exists
             !managers.walletManager // build only once
         ) {
             try {
+
+                console.log('createnetwork')   
                 // Create network service based on selected network
                 const networkPreset = selectedNetwork === 'main' ? 'mainnet' : 'testnet';
 
@@ -313,7 +325,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
 
                 // Create the wallet manager with proper error handling
                 const exampleWalletManager = new WalletAuthenticationManager(
-                    ADMIN_ORIGINATOR,
+                    adminOriginator,
                     buildWallet,
                     new OverlayUMPTokenInteractor(
                         resolver,
@@ -358,7 +370,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         WalletBridge,
         buildWallet,
         loadWalletSnapshot,
-        ADMIN_ORIGINATOR
+        adminOriginator
     ]);
 
     // When Settings manager becomes available, populate the user's settings
@@ -398,13 +410,19 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         updateSettings,
         network: selectedNetwork === 'main' ? 'mainnet' : 'testnet' as 'mainnet' | 'testnet',
         logout,
-        adminOriginator: ADMIN_ORIGINATOR
+        adminOriginator: ADMIN_ORIGINATOR,
+        setPasswordRetriever,
+        setRecoveryKeySaver,
+        setSpendingAuthorizationCallback,
+        setBasketAccessCallback,
+        setProtocolPermissionCallback,
+        setCertificateAccessCallback
     }), [
         managers,
         settings,
         updateSettings,
         selectedNetwork,
-        logout
+        logout,
     ]);
 
     return <WalletContext.Provider value={wallet}>

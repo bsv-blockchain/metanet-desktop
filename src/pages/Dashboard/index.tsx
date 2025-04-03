@@ -11,10 +11,12 @@ import {
 import { WalletContext } from '../../WalletContext.js'
 import PageLoading from '../../components/PageLoading.js'
 import Menu from '../../layouts/Menu.js'
-import { Menu as MenuIcon, Settings, Apps } from '@mui/icons-material'
+import { Menu as MenuIcon } from '@mui/icons-material'
 import MyIdentity from './MyIdentity/index.js'
 import Trust from './Trust/index.js'
-import App from './App/Index.js'
+import Apps from './Apps/index.jsx'
+import App from './App/index.jsx'
+import Settings from './Settings/index.js'
 import Security from './Security/index.js'
 
 const useStyles = makeStyles(style as any, {
