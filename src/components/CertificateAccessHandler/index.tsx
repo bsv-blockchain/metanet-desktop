@@ -74,7 +74,7 @@ const CertificateAccessHandler = () => {
                     />
 
                     {/* Reason section */}
-                    {reason && (
+                    {description && (
                         <>
                          <Divider />
                             <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between" sx={{
@@ -85,7 +85,7 @@ const CertificateAccessHandler = () => {
                                 </Typography>
                                 <Stack px={3}>
                                     <Typography variant="body1">
-                                        {reason}
+                                        {description}
                                     </Typography>
                                 </Stack>
                             </Stack>
