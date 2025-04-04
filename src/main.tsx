@@ -16,6 +16,7 @@ import LostPassword from './pages/Recovery/LostPassword'
 import Recovery from './pages/Recovery'
 import BasketAccessHandler from './components/BasketAccessHandler'
 import CertificateAccessHandler from './components/CertificateAccessHandler'
+import ProtocolPermissionHandler from './components/ProtocolPermissionHandler'
 
 // Define queries for responsive design
 const queries = {
@@ -41,6 +42,7 @@ if (rootElement) {
                   <ToastContainer position='top-center' />
                   <BasketAccessHandler />
                   <CertificateAccessHandler />
+                  <ProtocolPermissionHandler />
                   <Switch>
                     <Route exact path='/' component={Greeter} />
                     <Route path='/dashboard' component={Dashboard} />
