@@ -15,6 +15,7 @@ import LostPhone from './pages/Recovery/LostPhone'
 import LostPassword from './pages/Recovery/LostPassword'
 import Recovery from './pages/Recovery'
 import BasketAccessHandler from './components/BasketAccessHandler'
+import CertificateAccessHandler from './components/CertificateAccessHandler'
 
 // Define queries for responsive design
 const queries = {
@@ -39,6 +40,7 @@ if (rootElement) {
                 <AppThemeProvider>
                   <ToastContainer position='top-center' />
                   <BasketAccessHandler />
+                  <CertificateAccessHandler />
                   <Switch>
                     <Route exact path='/' component={Greeter} />
                     <Route path='/dashboard' component={Dashboard} />

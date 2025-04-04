@@ -45,7 +45,7 @@ const CertificateAccessHandler = () => {
     if (!certificateAccessModalOpen || !certificateRequests.length) return null
 
     // Extract certificate data from request
-    const { requestID, certificateType, fieldsArray, verifierPublicKey, originator, description, renewal } = certificateRequests[0] as CertificateAccessRequest
+    const { originator, verifierPublicKey, certificateType, fieldsArray, description, renewal } = certificateRequests[0] as CertificateAccessRequest
 
     return (
         <CustomDialog
