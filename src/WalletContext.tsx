@@ -482,7 +482,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
             await storageManager.addWalletStorageProvider(client);
 
             // Setup permissions with provided callbacks.
-            const permissionsManager = new WalletPermissionsManager(wallet, ADMIN_ORIGINATOR, {
+            const permissionsManager = new WalletPermissionsManager(wallet, adminOriginator, {
                 seekPermissionsForPublicKeyRevelation: false,
                 seekProtocolPermissionsForSigning: false,
                 seekProtocolPermissionsForEncrypting: false,
