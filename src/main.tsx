@@ -43,10 +43,10 @@ if (rootElement) {
                 <AppThemeProvider>
                   <PasswordHandler/>
                   <RecoveryKeyHandler />
-                  <ToastContainer position='top-center' />
                   <BasketAccessHandler />
                   <CertificateAccessHandler />
                   <ProtocolPermissionHandler />
+                  <ToastContainer position='top-center' />
                   <Switch>
                     <Route exact path='/' component={Greeter} />
                     <Route path='/dashboard' component={Dashboard} />
