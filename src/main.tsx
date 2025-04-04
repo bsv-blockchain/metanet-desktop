@@ -41,7 +41,7 @@ if (rootElement) {
             <Router>
               <BreakpointProvider queries={queries}>
                 <AppThemeProvider>
-                  <PasswordHandler/>
+                  <PasswordHandler />
                   <RecoveryKeyHandler />
                   <BasketAccessHandler />
                   <CertificateAccessHandler />
