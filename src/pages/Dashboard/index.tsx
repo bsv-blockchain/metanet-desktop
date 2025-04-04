@@ -15,7 +15,7 @@ import { Menu as MenuIcon } from '@mui/icons-material'
 import MyIdentity from './MyIdentity/index.js'
 import Trust from './Trust/index.js'
 import Apps from './Apps/index.jsx'
-import App from './App/index.jsx'
+import App from './App/Index.jsx'
 import Settings from './Settings/index.js'
 import Security from './Security/index.js'
 
