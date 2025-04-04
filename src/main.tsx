@@ -17,6 +17,8 @@ import Recovery from './pages/Recovery'
 import BasketAccessHandler from './components/BasketAccessHandler'
 import CertificateAccessHandler from './components/CertificateAccessHandler'
 import ProtocolPermissionHandler from './components/ProtocolPermissionHandler'
+import PasswordHandler from './components/PasswordHandler'
+import RecoveryKeyHandler from './components/RecoveryKeyHandler'
 
 // Define queries for responsive design
 const queries = {
@@ -39,6 +41,8 @@ if (rootElement) {
             <Router>
               <BreakpointProvider queries={queries}>
                 <AppThemeProvider>
+                  <PasswordHandler/>
+                  <RecoveryKeyHandler />
                   <ToastContainer position='top-center' />
                   <BasketAccessHandler />
                   <CertificateAccessHandler />

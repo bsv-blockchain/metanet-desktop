@@ -134,8 +134,7 @@ const PasswordHandler: React.FC = () => {
     <CustomDialog
       open={open}
       title="Password Required"
-      backgroundColor="#1a1a1a"
-      handleClose={handleAbort}
+      onClose={handleAbort}
     >
       <form onSubmit={handleSubmit}>
         <DialogContent>
