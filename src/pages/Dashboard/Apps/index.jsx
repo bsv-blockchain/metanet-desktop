@@ -200,7 +200,7 @@ const Apps = () => {
             {recentApps.map((app, index) => (
               <Grid
                 key={index}
-                xs={12} sm={6} md={3}
+                sx={{ xs: 12, sm: 6, md: 3 }}
               >
                 <MetanetApp
                   appName={app.appName}
@@ -232,7 +232,7 @@ const Apps = () => {
           {filteredApps.map((app, index) => (
             <Grid
               key={index}
-              xs={12} sm={6} md={3}
+              sx={{  xs: 12, sm: 6, md: 3 }}
             >
               <MetanetApp
                 appName={app.appName}
