@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Chip, Avatar, Stack, Typography, Divider } from '@mui/material'
+import { Chip, Avatar, Stack, Typography, Divider, Box } from '@mui/material'
 import { withRouter, RouteComponentProps } from 'react-router-dom'
 import CloseIcon from '@mui/icons-material/Close'
 import makeStyles from '@mui/styles/makeStyles'
@@ -155,7 +155,9 @@ const ProtoChip: React.FC<ProtoChipProps> = ({
         height: '3em', width: '100%'
       }}>
         <Typography variant="body1" fontWeight="bold">Scope:</Typography>
-        <Typography variant="body1" sx={{ fontSize: '1rem' }}>{description && `${description} -`}{securityLevelExplainer(securityLevel)}</Typography>
+        <Box px={3}>
+          <Typography variant="body1" sx={{ fontSize: '1rem' }}>{description && `${description} -`}{securityLevelExplainer(securityLevel)}</Typography>
+        </Box>
       </Stack>
     </Stack>
   )

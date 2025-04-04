@@ -1,172 +1,68 @@
-import { Dispatch, SetStateAction, useState, useEffect, useContext } from 'react'
-import { DialogContent, DialogActions, Button, Paper, Typography, Divider, Box, Stack, Tooltip } from '@mui/material'
-import Grid from '@mui/material/Grid2'
+import { useContext } from 'react'
+import { DialogContent, DialogActions, Button, Box, Stack, Tooltip, Avatar, Divider } from '@mui/material'
 import CustomDialog from '../CustomDialog/index'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
+import { UserContext } from '../../UserContext'
 import AppChip from '../AppChip/index'
 import ProtoChip from '../ProtoChip/index'
-import { PermissionEventHandler, PermissionRequest } from '@bsv/wallet-toolbox-client'
-import { useTheme } from '@mui/material/styles'
-import Avatar from '@mui/material/Avatar'
-// Import custom icons for each permission type
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import CodeIcon from '@mui/icons-material/Code'
 import CachedIcon from '@mui/icons-material/Cached'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
 import deterministicColor from '../../utils/deterministicColor'
-import InfoIcon from '@mui/icons-material/Info'
 
 // Permission request types
 type PermissionType = 'identity' | 'protocol' | 'renewal' | 'basket';
 
-interface PermissionItem {
-  requestID: string;
-  protocolSecurityLevel: number;
-  protocolID: string;
-  counterparty?: string;
-  originator?: string;
-  description?: string;
-  renewal?: boolean;
-  type?: PermissionType;
-}
-
-const ProtocolPermissionHandler: React.FC<{
-  setProtocolPermissionCallback: Dispatch<SetStateAction<PermissionEventHandler>>
-}> = ({ setProtocolPermissionCallback }) => {
-  const {
-    onFocusRequested,
-    onFocusRelinquished,
-    isFocused,
-    managers
-  } = useContext(WalletContext)
-  const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [perms, setPerms] = useState<Array<PermissionItem>>([])
-
-  const theme = useTheme()
-
-  const handleCancel = () => {
-    managers.permissionsManager.denyPermission(perms[0].requestID)
-    setPerms(prev => {
-      const newPerms = prev.slice(1)
-      if (newPerms.length === 0) {
-        setOpen(false)
-        if (!wasOriginallyFocused) {
-          onFocusRelinquished()
-        }
-      }
-      return newPerms
-    })
+// Permission type documents
+const permissionTypeDocs = {
+  identity: {
+    title: 'Trusted Entities Access Request',
+    description: 'An app is requesting access to lookup identity information using the entities you trust.',
+    icon: <VerifiedUserIcon fontSize="medium" />
+  },
+  renewal: {
+    title: 'Protocol Access Renewal',
+    description: 'An app is requesting to renew its previous access to a protocol.',
+    icon: <CachedIcon fontSize="medium" />
+  },
+  basket: {
+    title: 'Basket Access Request',
+    description: 'An app wants to view your tokens within a specific basket.',
+    icon: <ShoppingBasketIcon fontSize="medium" />
+  },
+  protocol: {
+    title: 'Protocol Access Request',
+    icon: <CodeIcon fontSize="medium" />
   }
+};
 
-  const handleGrant = () => {
-    managers.permissionsManager.grantPermission({ requestID: perms[0].requestID })
-    setPerms(prev => {
-      const newPerms = prev.slice(1)
-      if (newPerms.length === 0) {
-        setOpen(false)
-        if (!wasOriginallyFocused) {
-          onFocusRelinquished()
-        }
-      }
-      return newPerms
-    })
-  }
+const ProtocolPermissionHandler = () => {
+  const { protocolRequests, advanceProtocolQueue, managers } = useContext(WalletContext)
+  const { protocolAccessModalOpen } = useContext(UserContext)
 
-  useEffect(() => {
-    setProtocolPermissionCallback(() => {
-      return async (args: PermissionRequest & { requestID: string }): Promise<void> => {
-        const {
-          requestID,
-          counterparty,
-          originator,
-          reason,
-          renewal,
-          protocolID
-        } = args
-        const [protocolSecurityLevel, protocolNameString] = protocolID!
-        
-        // First check if we're already focused
-        const wasOriginallyFocused = await isFocused()
-        
-        // Determine type of permission
-        let permissionType: PermissionType = 'protocol';
-        if (protocolNameString === 'identity resolution') {
-          permissionType = 'identity';
-        } else if (renewal) {
-          permissionType = 'renewal';
-        } else if (protocolNameString.includes('basket')) {
-          permissionType = 'basket';
-        }
-        
-        // Create the new permission request
-        const newItem: PermissionItem = {
-          requestID,
-          protocolSecurityLevel,
-          protocolID: protocolNameString,
-          counterparty,
-          originator,
-          description: reason,
-          renewal,
-          type: permissionType
-        }
-        
-        // Update state in a single batch
-        await Promise.all([
-          // Request focus if needed
-          !wasOriginallyFocused ? onFocusRequested() : Promise.resolve(),
-          // Set the original focus state
-          new Promise<void>(resolve => {
-            setWasOriginallyFocused(wasOriginallyFocused)
-            resolve()
-          }),
-          // Add the new permission request
-          new Promise<void>(resolve => {
-            setPerms(p => [...p, newItem])
-            resolve()
-          })
-        ])
-        
-        // Finally, open the dialog
-        setOpen(true)
-      }
-    })
-  }, [])
-
-  // Only render if we have both dialog open and permissions to show
-  if (!open || perms.length === 0) {
-    return null
-  }
-
-  // Get the current permission request
-  const currentPerm = perms[0]
-  console.log({ currentPerm })
-  if (!currentPerm) {
-    return null
-  }
-
-  // Permission type documents
-  const permissionTypeDocs = {
-    identity: {
-      title: 'Trusted Entities Access Request',
-      description: 'An app is requesting access to lookup identity information using the entities you trust.',
-      icon: <VerifiedUserIcon fontSize="medium" />
-    },
-    renewal: {
-      title: 'Protocol Access Renewal',
-      description: 'An app is requesting to renew its previous access to a protocol.',
-      icon: <CachedIcon fontSize="medium" />
-    },
-    basket: {
-      title: 'Basket Access Request',
-      description: 'An app wants to view your tokens within a specific basket.',
-      icon: <ShoppingBasketIcon fontSize="medium" />
-    },
-    protocol: {
-      title: 'Protocol Access Request',
-      icon: <CodeIcon fontSize="medium" />
+  // Handle denying the top request in the queue
+  const handleDeny = () => {
+    if (protocolRequests.length > 0) {
+      managers.permissionsManager?.denyPermission(protocolRequests[0].requestID)
     }
-  };
+    advanceProtocolQueue()
+  }
+
+  // Handle granting the top request in the queue
+  const handleGrant = () => {
+    if (protocolRequests.length > 0) {
+      managers.permissionsManager?.grantPermission({
+        requestID: protocolRequests[0].requestID
+      })
+    }
+    advanceProtocolQueue()
+  }
+
+  if (!protocolAccessModalOpen || !protocolRequests.length) return null
+
+  const currentPerm = protocolRequests[0]
+  console.log({ currentPerm })
 
   // Get permission type document
   const getPermissionTypeDoc = () => {
@@ -191,9 +87,10 @@ const ProtocolPermissionHandler: React.FC<{
 
   return (
     <CustomDialog
-      open={open}
+      open={protocolAccessModalOpen}
       title={getPermissionTypeDoc().title}
       icon={getPermissionTypeDoc().icon}
+      onClose={handleDeny} // If the user closes via the X, treat as "deny"
     >
       <DialogContent>
         {/* Main content with app and protocol details */}
@@ -209,29 +106,43 @@ const ProtocolPermissionHandler: React.FC<{
             label={currentPerm.originator || 'unknown'}
             clickable={false}
           />
-        
+
           <Divider />
 
+          {/* Protocol details */}
           <ProtoChip
-            size={1.5}
-            securityLevel={currentPerm.protocolSecurityLevel}
             protocolID={currentPerm.protocolID}
-            counterparty={currentPerm.counterparty}
-            description={currentPerm.description}
+            securityLevel={currentPerm.protocolSecurityLevel}
           />
+
+          {/* Counterparty section (if available) */}
+          {currentPerm.counterparty && (
+            <>
+              <Divider />
+              <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between" sx={{
+                height: '3em',
+                width: '100%'
+              }}>
+                <Box sx={{ fontWeight: 'bold' }}>
+                  Counterparty:
+                </Box>
+                <Stack px={3}>
+                  {currentPerm.counterparty}
+                </Stack>
+              </Stack>
+            </>
+          )}
         </Stack>
       </DialogContent>
-      {/* 
-        This gradient of colors is just a visual cue to help the user realize that each request is different 
-        (sometimes several will pop up one after another and it feels like you're pressing "approve" on the same dialogue over and over again).
-      */}
+
+      {/* Visual signature */}
       <Tooltip title="Unique visual signature for this request" placement="top">
-        <Box sx={{ mb:3, py: 0.5, background: deterministicColor(JSON.stringify(currentPerm)) }} />
+        <Box sx={{ mb: 3, py: 0.5, background: deterministicColor(JSON.stringify(currentPerm)) }} />
       </Tooltip>
 
       <DialogActions sx={{ justifyContent: 'space-between' }}>
         <Button 
-          onClick={handleCancel}
+          onClick={handleDeny}
           variant="outlined"
           color="inherit"
         >
@@ -240,7 +151,7 @@ const ProtocolPermissionHandler: React.FC<{
         <Button 
           onClick={handleGrant}
           variant="contained"
-          color={currentPerm.type === 'identity' ? 'info' : 'primary'}
+          color="primary"
         >
           Grant Access
         </Button>

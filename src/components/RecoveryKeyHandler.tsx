@@ -1,4 +1,4 @@
-import { useState, useEffect, FC } from 'react'
+import { useState, useEffect, FC, useContext } from 'react'
 import {
   DialogContent,
   DialogContentText,
@@ -16,12 +16,10 @@ import LockIcon from '@mui/icons-material/Lock'
 import DownloadIcon from '@mui/icons-material/Download'
 import exportDataToFile from '../utils/exportDataToFile'
 import { Utils } from '@bsv/sdk';
+import { WalletContext } from '../WalletContext'
 
-type RecoverKeyHandlerProps = {
-  setRecoveryKeySaver: (saver: (key: number[]) => Promise<true>) => void
-}
-
-const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver }) => {
+const RecoveryKeyHandler: FC = () => {
+  const { setRecoveryKeySaver } = useContext(WalletContext)
   const [open, setOpen] = useState(false)
   const [recoveryKey, setRecoveryKey] = useState<string>('')
   const [affirmative1, setAffirmative1] = useState(false)

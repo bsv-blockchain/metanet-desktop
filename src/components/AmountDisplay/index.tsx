@@ -4,7 +4,7 @@ import { Tooltip, Typography, Button } from '@mui/material'
 import { formatSatoshis, formatSatoshisAsFiat, satoshisOptions } from './amountFormatHelpers'
 import { ExchangeRateContext } from './ExchangeRateContextProvider'
 import { useTheme } from '@emotion/react'
-import { WalletContext, WalletContextValue } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
 
 type Props = {
   abbreviate?: boolean,
@@ -35,7 +35,7 @@ const AmountDisplay: React.FC<Props> = ({ abbreviate, showPlus, description, chi
   const theme: any = useTheme()
 
   // Get current settings directly from context
-  const { settings } = useContext<WalletContextValue>(WalletContext)
+  const { settings } = useContext(WalletContext)
   const settingsCurrency = settings?.currency || ''
 
   // Retrieve necessary values and functions from the ExchangeRateContext

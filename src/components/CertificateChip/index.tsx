@@ -5,7 +5,7 @@ import { useTheme, makeStyles } from '@mui/styles'
 import style from './style'
 import CounterpartyChip from '../CounterpartyChip'
 import { Base64String } from '@bsv/sdk'
-import { WalletContext } from '../../UserInterface'
+import { WalletContext } from '../../WalletContext'
 import DeleteIcon from '@mui/icons-material/Delete'
 
 const useStyles = makeStyles(style, {
@@ -106,15 +106,33 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
-      gap: 1
+      gap: 1,
+      position: 'relative'
     }}>
-      <Typography variant='h5'>
+      <Typography variant="h5" fontWeight="bold">
         {certName}
       </Typography>
 
       <Typography variant='body1'>
         {lastAccessed || descriptionState}
       </Typography>
+      {/* Revoke button - only shown when canRevoke is true */}
+      {canRevoke && (
+        <Box sx={{ 
+          position: 'absolute',
+          top: 0,
+          right: 0
+        }}>
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={handleRelinquishCertificate}
+            aria-label="revoke certificate"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      )}
 
       {/* Fields display section */}
       {fields.length > 0 && (
@@ -165,20 +183,6 @@ const CertificateChip: React.FC<CertificateChipProps> = ({
         />}
       {expires && (
         <Typography className={classes.expires}>{expires}</Typography>
-      )}
-
-      {/* Revoke button - only shown when canRevoke is true */}
-      {canRevoke && (
-        <Box sx={{ ml: 1 }}>
-          <IconButton
-            color="primary"
-            size="small"
-            onClick={handleRelinquishCertificate}
-            aria-label="revoke certificate"
-          >
-            <DeleteIcon />
-          </IconButton>
-        </Box>
       )}
     </Box>
   )

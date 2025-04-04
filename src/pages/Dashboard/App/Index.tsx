@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useContext } from 'react';
-import { Grid, IconButton, Typography } from '@mui/material';
+import { IconButton, Typography } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import CheckIcon from '@mui/icons-material/Check';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { useLocation } from 'react-router-dom';
-import { WalletContext } from '../../../UserInterface';
+import { WalletContext } from '../../../WalletContext';
 import { WalletAction } from '@bsv/sdk';
 
 import { DEFAULT_APP_ICON } from '../../../constants/popularApps';
@@ -183,7 +184,7 @@ const Apps: React.FC<AppsProps> = ({ history }) => {
   return (
     <Grid container spacing={3} direction="column">
       {/* Page Header */}
-      <Grid item xs={12}>
+      <Grid sx={{ xs: 12 }}>
         <PageHeader
           history={history}
           title={appName}
@@ -210,9 +211,9 @@ const Apps: React.FC<AppsProps> = ({ history }) => {
       </Grid>
 
       {/* Main Content: RecentActions + AccessAtAGlance */}
-      <Grid container item spacing={3} direction="row">
+      <Grid container spacing={3} direction="row">
         {/* RecentActions Section */}
-        <Grid item lg={6} md={6} xs={12}>
+        <Grid sx={{ lg: 6, md: 6, xs: 12 }}>
           <RecentActions
             appActions={appActions}
             displayLimit={displayLimit}
@@ -220,17 +221,6 @@ const Apps: React.FC<AppsProps> = ({ history }) => {
             loading={loading}
             setRefresh={setRefresh}
           />
-        </Grid>
-
-        {/* Another component for app details or usage stats */}
-        <Grid item lg={6} md={6} xs={12}>
-          <h1>Access at a Glance coming soon</h1>
-          {/* <AccessAtAGlance
-            originator={appDomain}
-            loading={loading}
-            setRefresh={setRefresh}
-            history={history}
-          /> */}
         </Grid>
       </Grid>
     </Grid>

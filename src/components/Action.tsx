@@ -6,7 +6,6 @@ import {
   AccordionDetails,
   Typography,
   IconButton,
-  Grid,
   Snackbar,
   Alert,
   Divider,
@@ -15,6 +14,7 @@ import {
   Tooltip,
   useTheme,
 } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import { makeStyles } from '@mui/styles';
 import { Theme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -180,7 +180,7 @@ const Action: FC<ActionProps> = ({
         id="transaction-details-header"
       >
         <Grid container direction="column">
-          <Grid item>
+          <Grid>
             <Typography
               variant="h5"
               style={{ color: 'textPrimary', wordBreak: 'break-all' }}
@@ -188,9 +188,9 @@ const Action: FC<ActionProps> = ({
               {description}
             </Typography>
           </Grid>
-          <Grid item>
+          <Grid>
             <Grid container justifyContent="space-between">
-              <Grid item>
+              <Grid>
                 <Typography variant="h6" style={{ color: determineAmountColor(amount) }}>
                   <AmountDisplay showPlus>{amount}</AmountDisplay>
                 </Typography>
@@ -276,19 +276,19 @@ const Action: FC<ActionProps> = ({
               <Typography variant="h6">Transaction Summary</Typography>
             </div>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid sx={{ xs: 12, sm: 4 }}>
                 <Typography variant="body2" color="textSecondary">Total Input</Typography>
                 <Typography variant="h6">
                   <AmountDisplay>{totalInputAmount}</AmountDisplay>
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid sx={{ xs: 12, sm: 4 }}>
                 <Typography variant="body2" color="textSecondary">Total Output</Typography>
                 <Typography variant="h6">
                   <AmountDisplay>{totalOutputAmount}</AmountDisplay>
                 </Typography>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid sx={{ xs: 12, sm: 4 }}>
                 <Typography variant="body2" color="textSecondary">Network Fees</Typography>
                 <Typography variant="h6">
                   <AmountDisplay>{fees || 0}</AmountDisplay>
@@ -309,10 +309,10 @@ const Action: FC<ActionProps> = ({
               </div>
               <Grid container direction="column" spacing={2}>
                 {inputs.map((input, index) => (
-                  <Grid item key={index}>
+                  <Grid key={index}>
                     <Paper variant="outlined" style={{ padding: '16px' }}>
                       <Grid container spacing={2}>
-                        <Grid item xs={12}>
+                        <Grid sx={{ xs: 12 }}>
                           <Typography variant="body2" color="textSecondary">
                             Input #{index + 1}
                           </Typography>
@@ -320,7 +320,7 @@ const Action: FC<ActionProps> = ({
                             {input.inputDescription}
                           </Typography>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid sx={{ xs: 12 }}>
                           <div className={classes.amountChip}>
                             <AmountDisplay description={input.inputDescription}>
                               {input.sourceSatoshis}
@@ -347,10 +347,10 @@ const Action: FC<ActionProps> = ({
               </div>
               <Grid container direction="column" spacing={2}>
                 {outputs.map((output, index) => (
-                  <Grid item key={index}>
+                  <Grid key={index}>
                     <Paper variant="outlined" style={{ padding: '16px' }}>
                       <Grid container spacing={2}>
-                        <Grid item xs={12}>
+                        <Grid sx={{ xs: 12 }}>
                           <Typography variant="body2" color="textSecondary">
                             Output #{index + 1}
                           </Typography>
@@ -358,7 +358,7 @@ const Action: FC<ActionProps> = ({
                             {output.outputDescription}
                           </Typography>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid sx={{ xs: 12 }}>
                           <div className={classes.amountChip}>
                             <AmountDisplay description={output.outputDescription}>
                               {output.satoshis}

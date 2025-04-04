@@ -1,20 +1,21 @@
 import { useState, useEffect, useContext } from 'react'
 import { DialogActions, DialogContent, Button, DialogContentText, TextField, InputAdornment, IconButton } from '@mui/material'
 import CustomDialog from './CustomDialog'
-import { WalletContext, WalletContextValue } from '../UserInterface'
+import { UserContext, UserContextValue } from '../UserContext'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { toast } from 'react-toastify';
+import { WalletContext } from '../WalletContext'
 
 type PasswordHandlerProps = {
   setPasswordRetriever: (retriever: (reason: string, test: (passwordCandidate: string) => boolean) => Promise<string>) => void
 }
 
-const PasswordHandler: React.FC<PasswordHandlerProps> = ({ setPasswordRetriever }) => {
+const PasswordHandler: React.FC = () => {
   const {
     onFocusRequested,
     onFocusRelinquished,
     isFocused
-  } = useContext<WalletContextValue>(WalletContext)
+  } = useContext<UserContextValue>(UserContext)
   const [wasOriginallyFocused, setWasOriginallyFocused] = useState(false)
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -23,6 +24,7 @@ const PasswordHandler: React.FC<PasswordHandlerProps> = ({ setPasswordRetriever 
   const [reject, setReject] = useState<Function>(() => { })
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const { setPasswordRetriever } = useContext(WalletContext)
 
   useEffect(() => {
     setPasswordRetriever((): any => {

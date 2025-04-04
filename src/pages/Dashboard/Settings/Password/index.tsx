@@ -8,7 +8,7 @@ import {
 } from '@mui/material'
 import { makeStyles } from '@mui/styles'
 import { toast } from 'react-toastify'
-import { WalletContext } from '../../../../UserInterface'
+import { WalletContext } from '../../../../WalletContext'
 import { Utils } from '@bsv/sdk'
 
 const useStyles = makeStyles(style, { name: 'PasswordSettings' })

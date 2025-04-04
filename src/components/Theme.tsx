@@ -6,7 +6,7 @@ import {
   useMediaQuery,
   PaletteMode
 } from '@mui/material';
-import { WalletContext } from '../UserInterface';
+import { WalletContext } from '../WalletContext';
 
 // Define custom theme types
 declare module '@mui/material/styles' {

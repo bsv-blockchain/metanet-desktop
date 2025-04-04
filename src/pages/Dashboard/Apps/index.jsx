@@ -9,7 +9,7 @@ import isImageUrl from '../../../utils/isImageUrl'
 import Fuse from 'fuse.js'
 // import POPULAR_APPS from '../../../constants/popularApps'
 import getApps from './getApps'
-import { WalletContext } from '../../../UserInterface'
+import { WalletContext } from '../../../WalletContext'
 
 const Apps = () => {
   const theme = useTheme()
@@ -200,7 +200,7 @@ const Apps = () => {
             {recentApps.map((app, index) => (
               <Grid
                 key={index}
-                xs={12} sm={6} md={3}
+                sx={{ xs: 12, sm: 6, md: 3 }}
               >
                 <MetanetApp
                   appName={app.appName}
@@ -232,7 +232,7 @@ const Apps = () => {
           {filteredApps.map((app, index) => (
             <Grid
               key={index}
-              xs={12} sm={6} md={3}
+              sx={{  xs: 12, sm: 6, md: 3 }}
             >
               <MetanetApp
                 appName={app.appName}

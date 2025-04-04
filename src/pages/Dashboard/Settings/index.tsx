@@ -10,7 +10,7 @@ import {
 import Grid from '@mui/material/Grid2' 
 import { makeStyles } from '@mui/styles'
 import { toast } from 'react-toastify'
-import { WalletContext } from '../../../UserInterface.js'
+import { WalletContext } from '../../../WalletContext'
 import { Theme } from '@mui/material/styles'
 import DarkModeImage from "../../../images/darkMode.jsx"
 import LightModeImage from "../../../images/lightMode.jsx"
