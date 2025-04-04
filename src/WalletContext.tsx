@@ -212,6 +212,48 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         }
     }, [isFocused, onFocusRequested])
 
+/*
+const {
+          requestID, yep 
+          originator, yep 
+          renewal, yep
+          reason yep
+        } = args
+
+        // Extract certificate data, safely handling potentially undefined values
+        const certificate = args.certificate as any
+        const certType = certificate?.certType || ''
+        const fields = certificate?.fields || {}
+
+        // Extract field names as an array for the CertificateChip component
+        const fieldsArray = fields ? Object.keys(fields) : []
+
+        const verifier = certificate?.verifier || ''
+
+        // Focus logic
+        const currentlyFocused = await isFocused()
+        setWasOriginallyFocused(currentlyFocused)
+        if (!currentlyFocused) {
+          await onFocusRequested()
+        }
+
+        // Add to queue
+        setPerms(p => {
+          const newItem: CertificateAccessRequest = {
+            originator,
+            verifierPublicKey: verifier,
+            certificateType: certType,
+            fields,
+            fieldsArray,
+            renewal,
+            requestID,
+            description: reason
+          }
+          return [...p, newItem]
+        })
+*/
+
+
     // Provide a handler for certificate-access requests that enqueues them
     const certificateAccessCallback = useCallback((incomingRequest: PermissionRequest & {
         requestID: string
@@ -240,13 +282,25 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
                     })
                 }
 
+                // Extract certificate data, safely handling potentially undefined values
+                const certificate = incomingRequest.certificate as any
+                const certType = certificate?.certType || ''
+                const fields = certificate?.fields || {}
+
+                // Extract field names as an array for the CertificateChip component
+                const fieldsArray = fields ? Object.keys(fields) : []
+
+                const verifier = certificate?.verifier || ''
+
                 return [
                     ...prev,
                     {
                         requestID: incomingRequest.requestID,
-                        certificate: incomingRequest.certificate,
                         originator: incomingRequest.originator,
-                        reason: incomingRequest.reason,
+                        verifierPublicKey: verifier,
+                        certificateType: certType,
+                        fieldsArray,
+                        description: incomingRequest.reason,
                         renewal: incomingRequest.renewal
                     }
                 ]
