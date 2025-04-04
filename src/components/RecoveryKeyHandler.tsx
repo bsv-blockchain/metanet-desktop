@@ -176,7 +176,6 @@ const RecoveryKeyHandler: FC = () => {
         </Button>
         <Button
           onClick={onKeySaved}
-          sx={{ backgroundColor: '#006600' }}
           endIcon={<LockIcon />}
           variant='contained'
           disabled={(!affirmative1) || (!affirmative2) || (!affirmative3)}
