@@ -59,7 +59,6 @@ export interface WalletContextValue {
     setPasswordRetriever: (retriever: (reason: string, test: (passwordCandidate: string) => boolean) => Promise<string>) => void
     setRecoveryKeySaver: (saver: (key: number[]) => Promise<true>) => void
     setSpendingAuthorizationCallback: (callback: PermissionEventHandler) => void
-    setProtocolPermissionCallback: (callback: PermissionEventHandler) => void
     snapshotLoaded: boolean
     basketRequests: BasketAccessRequest[]
     certificateRequests: CertificateAccessRequest[]
@@ -113,7 +112,6 @@ export const WalletContext = createContext<WalletContextValue>({
     setPasswordRetriever: () => { },
     setRecoveryKeySaver: () => { },
     setSpendingAuthorizationCallback: () => { },
-    setProtocolPermissionCallback: () => { },
     snapshotLoaded: false,
     basketRequests: [],
     certificateRequests: [],
@@ -201,8 +199,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         (key: number[]) => Promise<true>
     >();
     const [spendingAuthorizationCallback, setSpendingAuthorizationCallback] =
-        useState<PermissionEventHandler>(() => { });
-    const [protocolPermissionCallback, setProtocolPermissionCallback] =
         useState<PermissionEventHandler>(() => { });
 
 
@@ -299,7 +295,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
     }, [isFocused, onFocusRequested])
 
     // Provide a handler for protocol permission requests that enqueues them
-    const protocolAccessCallback = useCallback((args: PermissionRequest & { requestID: string }): Promise<void> => {
+    const protocolPermissionCallback = useCallback((args: PermissionRequest & { requestID: string }): Promise<void> => {
         const {
             requestID,
             counterparty,
@@ -485,7 +481,7 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
             const permissionsManager = new WalletPermissionsManager(wallet, adminOriginator, {
                 seekPermissionsForPublicKeyRevelation: false,
                 seekProtocolPermissionsForSigning: false,
-                seekProtocolPermissionsForEncrypting: false,
+                seekProtocolPermissionsForEncrypting: true,
                 seekProtocolPermissionsForHMAC: false,
                 seekPermissionsForIdentityKeyRevelation: false,
                 seekPermissionsForKeyLinkageRevelation: false
@@ -660,7 +656,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
         setPasswordRetriever,
         setRecoveryKeySaver,
         setSpendingAuthorizationCallback,
-        setProtocolPermissionCallback,
         basketRequests,
         certificateRequests,
         protocolRequests,
@@ -690,7 +685,6 @@ export const WalletContextProvider: React.FC<WalletContextProps> = ({
             setPasswordRetriever,
             setRecoveryKeySaver,
             setSpendingAuthorizationCallback,
-            setProtocolPermissionCallback,
             snapshotLoaded,
             basketRequests,
             certificateRequests,
