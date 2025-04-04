@@ -1,4 +1,4 @@
-import { useState, useEffect, FC } from 'react'
+import { useState, useEffect, useCallback, FC, useContext } from 'react'
 import {
   DialogContent,
   DialogContentText,
@@ -15,39 +15,43 @@ import CustomDialog from './CustomDialog/index.jsx'
 import LockIcon from '@mui/icons-material/Lock'
 import DownloadIcon from '@mui/icons-material/Download'
 import exportDataToFile from '../utils/exportDataToFile'
-import { Utils } from '@bsv/sdk';
+import { Utils } from '@bsv/sdk'
+import { WalletContext } from '../WalletContext'
 
 const RecoveryKeyHandler: FC = () => {
+  const { setRecoveryKeySaver } = useContext(WalletContext)
+
   const [open, setOpen] = useState(false)
   const [recoveryKey, setRecoveryKey] = useState<string>('')
   const [affirmative1, setAffirmative1] = useState(false)
   const [affirmative2, setAffirmative2] = useState(false)
   const [affirmative3, setAffirmative3] = useState(false)
+  const [resolvePromise, setResolvePromise] = useState<(value: true) => void>(() => () => {})
+  const [rejectPromise, setRejectPromise] = useState<(error: Error) => void>(() => () => {})
 
-  const [resolve, setResolve] = useState<Function>(() => { })
-  const [reject, setReject] = useState<Function>(() => { })
-
-  useEffect(() => {
-    setRecoveryKeySaver((): any => {
-      return (key: number[]): Promise<true> => {
-        return new Promise((resolve, reject) => {
-          const keyAsStr = Utils.toBase64(key)
-          setResolve(() => { return resolve })
-          setReject(() => { return reject })
-          setRecoveryKey(keyAsStr)
-          setOpen(true)
-        })
-      }
-    })
+  const createRecoveryKeySaver = useCallback(() => {
+    return (key: number[]): Promise<true> => {
+      return new Promise((resolve, reject) => {
+        const keyAsStr = Utils.toBase64(key)
+        setRecoveryKey(keyAsStr)
+        setResolvePromise(() => resolve)
+        setRejectPromise(() => reject)
+        setOpen(true)
+      })
+    }
   }, [])
 
+  useEffect(() => {
+    setRecoveryKeySaver(createRecoveryKeySaver())
+  }, [setRecoveryKeySaver, createRecoveryKeySaver])
+
   const onKeySaved = async (): Promise<void> => {
-    resolve(true)
+    resolvePromise(true)
     setOpen(false)
   }
 
   const onAbandon = async (): Promise<void> => {
-    reject(new Error('User abandoned the backup process'))
+    rejectPromise(new Error('User abandoned the backup process'))
     setOpen(false)
   }
 
