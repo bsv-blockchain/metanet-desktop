@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FC, useContext } from 'react'
+import { useState, useEffect, FC } from 'react'
 import {
   DialogContent,
   DialogContentText,
@@ -15,43 +15,43 @@ import CustomDialog from './CustomDialog/index.jsx'
 import LockIcon from '@mui/icons-material/Lock'
 import DownloadIcon from '@mui/icons-material/Download'
 import exportDataToFile from '../utils/exportDataToFile'
-import { Utils } from '@bsv/sdk'
-import { WalletContext } from '../WalletContext'
+import { Utils } from '@bsv/sdk';
 
-const RecoveryKeyHandler: FC = () => {
-  const { setRecoveryKeySaver } = useContext(WalletContext)
+type RecoverKeyHandlerProps = {
+  setRecoveryKeySaver: (saver: (key: number[]) => Promise<true>) => void
+}
 
+const RecoveryKeyHandler: FC<RecoverKeyHandlerProps> = ({ setRecoveryKeySaver }) => {
   const [open, setOpen] = useState(false)
   const [recoveryKey, setRecoveryKey] = useState<string>('')
   const [affirmative1, setAffirmative1] = useState(false)
   const [affirmative2, setAffirmative2] = useState(false)
   const [affirmative3, setAffirmative3] = useState(false)
-  const [resolvePromise, setResolvePromise] = useState<(value: true) => void>(() => () => {})
-  const [rejectPromise, setRejectPromise] = useState<(error: Error) => void>(() => () => {})
 
-  const createRecoveryKeySaver = useCallback(() => {
-    return (key: number[]): Promise<true> => {
-      return new Promise((resolve, reject) => {
-        const keyAsStr = Utils.toBase64(key)
-        setRecoveryKey(keyAsStr)
-        setResolvePromise(() => resolve)
-        setRejectPromise(() => reject)
-        setOpen(true)
-      })
-    }
-  }, [])
+  const [resolve, setResolve] = useState<Function>(() => { })
+  const [reject, setReject] = useState<Function>(() => { })
 
   useEffect(() => {
-    setRecoveryKeySaver(createRecoveryKeySaver())
-  }, [setRecoveryKeySaver, createRecoveryKeySaver])
+    setRecoveryKeySaver((): any => {
+      return (key: number[]): Promise<true> => {
+        return new Promise((resolve, reject) => {
+          const keyAsStr = Utils.toBase64(key)
+          setResolve(() => { return resolve })
+          setReject(() => { return reject })
+          setRecoveryKey(keyAsStr)
+          setOpen(true)
+        })
+      }
+    })
+  }, [])
 
   const onKeySaved = async (): Promise<void> => {
-    resolvePromise(true)
+    resolve(true)
     setOpen(false)
   }
 
   const onAbandon = async (): Promise<void> => {
-    rejectPromise(new Error('User abandoned the backup process'))
+    reject(new Error('User abandoned the backup process'))
     setOpen(false)
   }
 
@@ -176,6 +176,7 @@ const RecoveryKeyHandler: FC = () => {
         </Button>
         <Button
           onClick={onKeySaved}
+          sx={{ backgroundColor: '#006600' }}
           endIcon={<LockIcon />}
           variant='contained'
           disabled={(!affirmative1) || (!affirmative2) || (!affirmative3)}
