@@ -28,3 +28,4 @@ hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 dashmap = "5"
 tauri-plugin-dialog = "2"
+once_cell = "1"

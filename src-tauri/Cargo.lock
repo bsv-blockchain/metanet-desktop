@@ -2211,6 +2211,7 @@ version = "0.3.3"
 dependencies = [
  "dashmap",
  "hyper 0.14.32",
+ "once_cell",
  "serde",
  "serde_json",
  "tauri",
