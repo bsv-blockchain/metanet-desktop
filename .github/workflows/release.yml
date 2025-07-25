@@ -159,25 +159,66 @@ jobs:
             SHA256SUMS
             SHA256SUMS.asc
 
-      # # === Windows EV Signing ===
-      # - name: Write Windows EV Certificate to file
-      #   if: matrix.platform == 'windows-latest'
-      #   run: |
-      #     echo $env:WINDOWS_EV_CERTIFICATE > windows_cert.pfx
-      #   env:
-      #     WINDOWS_EV_CERTIFICATE: ${{ secrets.WINDOWS_EV_CERTIFICATE }}
+      - name: Install DigiCert Signing Client
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://dl.digicert.com/signingmanager/dscc/latest/windows/dscc.zip" -OutFile "dscc.zip"
+          Expand-Archive -Path dscc.zip -DestinationPath "dscc"
 
-      # - name: Sign Windows Binary with EV Certificate
-      #   if: matrix.platform == 'windows-latest'
-      #   run: |
-      #     signtool sign /f windows_cert.pfx /p %WINDOWS_EV_CERTIFICATE_PASSWORD% /tr http://timestamp.digicert.com /td sha256 /fd sha256 path\to\metanet-desktop-setup.exe
-      #   env:
-      #     WINDOWS_EV_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_EV_CERTIFICATE_PASSWORD }}
+      - name: Authenticate with DigiCert Signing Manager
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          .\dscc\dscc.exe enroll --api-key "${{ secrets.DIGICERT_AUTOMATION_KEY }}"
 
-      # - name: Verify Windows Signature
-      #   if: matrix.platform == 'windows-latest'
-      #   run: |
-      #     signtool verify /pa /v path\to\metanet-desktop-setup.exe
+      - name: Sign Windows Executables with DigiCert
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+          $files = Get-ChildItem -Recurse -Path src-tauri\target\release\bundle\ -Include *.exe,*.msi | Select-Object -ExpandProperty FullName
+          foreach ($file in $files) {
+          & $signtool sign `
+            /fd sha256 `
+            /td sha256 `
+            /tr http://timestamp.digicert.com `
+            /v `
+            /d "Metanet Desktop" `
+            /a `
+            /sm `
+            /csp "DigiCert Signing Manager CSP" `
+            /kc "DigiCert Signing Manager Key Storage Provider" `
+            "$file"
+          }
+
+      - name: Verify Windows Signatures
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+          $files = Get-ChildItem -Recurse -Path src-tauri\target\release\bundle\ -Include *.exe,*.msi | Select-Object -ExpandProperty FullName
+          foreach ($file in $files) {
+          & $signtool verify /pa "$file"
+          }
+
+      - name: Upload Windows Artifact - MSI
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi-artifact
+          path: src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+
+      - name: Upload Windows Artifact - EXE
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-artifact
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis-web/*.exe
+          if-no-files-found: warn
       
       - name: List Windows build artifacts for debugging
         if: matrix.platform == 'windows-latest'
