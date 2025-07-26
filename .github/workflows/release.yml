@@ -159,38 +159,24 @@ jobs:
             SHA256SUMS
             SHA256SUMS.asc
 
-      - name: Install DigiCert Signing Client
+      - name: Set DigiCert environment variables
         if: matrix.platform == 'windows-latest'
-        shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://dl.digicert.com/signingmanager/dscc/latest/windows/dscc.zip" -OutFile "dscc.zip"
-          Expand-Archive -Path dscc.zip -DestinationPath "dscc"
+          echo "SM_HOST=${{ secrets.DIGICERT_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.DIGICERT_AUTOMATION_KEY }}" >> "$GITHUB_ENV"
+        shell: bash
 
-      - name: Authenticate with DigiCert Signing Manager
+      - name: Install DigiCert Client Tools
         if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          .\dscc\dscc.exe enroll --api-key "${{ secrets.DIGICERT_AUTOMATION_KEY }}"
+        uses: digicert/ssm-code-signing@v1.0.0
 
       - name: Sign Windows Executables with DigiCert
         if: matrix.platform == 'windows-latest'
-        shell: pwsh
+        shell: cmd
         run: |
-          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
-          $files = Get-ChildItem -Recurse -Path src-tauri\target\release\bundle\ -Include *.exe,*.msi | Select-Object -ExpandProperty FullName
-          foreach ($file in $files) {
-          & $signtool sign `
-            /fd sha256 `
-            /td sha256 `
-            /tr http://timestamp.digicert.com `
-            /v `
-            /d "Metanet Desktop" `
-            /a `
-            /sm `
-            /csp "DigiCert Signing Manager CSP" `
-            /kc "DigiCert Signing Manager Key Storage Provider" `
-            "$file"
-          }
+          for /r "src-tauri\target\release\bundle" %%f in (*.exe *.msi) do (
+            smctl sign --fingerprint ${{ secrets.DIGICERT_CODE_SIGNING_SHA1_HASH }} --input "%%f" --verbose
+          )
 
       - name: Verify Windows Signatures
         if: matrix.platform == 'windows-latest'
