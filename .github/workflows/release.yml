@@ -53,111 +53,111 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
-      # - name: import Apple Developer Certificate
-      #   if: matrix.platform == 'macos-latest'
-      #   env:
-      #     APPLE_CERTIFICATE: ${{ secrets.METANET_APPLE_CERTIFICATE }}
-      #     APPLE_CERTIFICATE_PASSWORD: ${{ secrets.METANET_APPLE_CERTIFICATE_PASSWORD }}
-      #     KEYCHAIN_PASSWORD: ${{ secrets.METANET_KEYCHAIN_PASSWORD }}
-      #   run: |
-      #     echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
-      #     security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-      #     security default-keychain -s build.keychain
-      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-      #     security set-keychain-settings -t 3600 -u build.keychain
-      #     security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-      #     security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-      #     security find-identity -v -p codesigning build.keychain
+      - name: import Apple Developer Certificate
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.METANET_APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.METANET_APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.METANET_KEYCHAIN_PASSWORD }}
+        run: |
+          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          security find-identity -v -p codesigning build.keychain
 
-      # - name: verify certificate
-      #   if: matrix.platform == 'macos-latest'
-      #   id: verify_certificate
-      #   run: |
-      #     CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "BSV")
-      #     echo "CERT_INFO=$CERT_INFO"
-      #     CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
-      #     echo "cert_id=$CERT_ID" >> $GITHUB_OUTPUT
-      #     echo "Certificate imported."
+      - name: verify certificate
+        if: matrix.platform == 'macos-latest'
+        id: verify_certificate
+        run: |
+          CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "BSV")
+          echo "CERT_INFO=$CERT_INFO"
+          CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
+          echo "cert_id=$CERT_ID" >> $GITHUB_OUTPUT
+          echo "Certificate imported."
 
-      # - name: build and publish
-      #   uses: tauri-apps/tauri-action@v0
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.METANET_GITHUB_TOKEN }}
-      #     APPLE_ID: ${{ secrets.METANET_APPLE_ID }}
-      #     APPLE_ID_PASSWORD: ${{ secrets.METANET_APPLE_ID_PASSWORD }}
-      #     APPLE_PASSWORD: ${{ secrets.METANET_APPLE_ID_PASSWORD }}
-      #     APPLE_TEAM_ID: ${{ secrets.METANET_APPLE_TEAM_ID }}
-      #     APPLE_CERTIFICATE: ${{ secrets.METANET_APPLE_CERTIFICATE }}
-      #     APPLE_SIGNING_IDENTITY: ${{ steps.verify_certificate.outputs.cert_id }}
-      #   with:
-      #     tagName: metanet-desktop-v__VERSION__
-      #     releaseName: "Metanet-Desktop-v__VERSION__"
-      #     releaseBody: "See the assets to download this version and install."
-      #     releaseDraft: true
-      #     prerelease: false
-      #     args: ${{ matrix.args }}
+      - name: build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.METANET_GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.METANET_APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.METANET_APPLE_ID_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.METANET_APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.METANET_APPLE_TEAM_ID }}
+          APPLE_CERTIFICATE: ${{ secrets.METANET_APPLE_CERTIFICATE }}
+          APPLE_SIGNING_IDENTITY: ${{ steps.verify_certificate.outputs.cert_id }}
+        with:
+          tagName: metanet-desktop-v__VERSION__
+          releaseName: "Metanet-Desktop-v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
 
-      # # === Linux AppImage Packaging and Signing ===
-      # - name: Prepare AppDir for AppImage
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   run: |
-      #     mkdir -p AppDir/usr/bin
-      #     mkdir -p AppDir/usr/share/applications
-      #     mkdir -p AppDir/usr/share/icons/hicolor/128x128/apps
-      #     mkdir -p AppDir/usr/share/metainfo
-      #     cp src-tauri/target/release/metanet-desktop AppDir/usr/bin/
-      #     cp src-tauri/metanet-desktop.desktop AppDir/usr/share/applications/
-      #     cp src-tauri/org.bsvblockchain.metanetdesktop.metainfo.xml AppDir/usr/share/metainfo/
-      #     cp src-tauri/icons/128x128.png AppDir/usr/share/icons/hicolor/128x128/apps/metanet-desktop.png
-      #     # Set executable permissions
-      #     chmod +x AppDir/usr/bin/metanet-desktop
+      # === Linux AppImage Packaging and Signing ===
+      - name: Prepare AppDir for AppImage
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/128x128/apps
+          mkdir -p AppDir/usr/share/metainfo
+          cp src-tauri/target/release/metanet-desktop AppDir/usr/bin/
+          cp src-tauri/metanet-desktop.desktop AppDir/usr/share/applications/
+          cp src-tauri/org.bsvblockchain.metanetdesktop.metainfo.xml AppDir/usr/share/metainfo/
+          cp src-tauri/icons/128x128.png AppDir/usr/share/icons/hicolor/128x128/apps/metanet-desktop.png
+          # Set executable permissions
+          chmod +x AppDir/usr/bin/metanet-desktop
 
-      # - name: Download linuxdeploy AppImage
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   run: |
-      #     wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-      #     chmod +x linuxdeploy-x86_64.AppImage
+      - name: Download linuxdeploy AppImage
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
       
-      # - name: install appstreamcli
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   run: sudo apt-get install -y appstream
+      - name: install appstreamcli
+        if: matrix.platform == 'ubuntu-22.04'
+        run: sudo apt-get install -y appstream
 
-      # - name: Create AppImage
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   env:
-      #     APPIMAGE_EXTRACT_AND_RUN: 1
-      #   run: |
-      #     ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file=AppDir/usr/share/icons/hicolor/128x128/apps/metanet-desktop.png --desktop-file=AppDir/usr/share/applications/metanet-desktop.desktop
-      #     mv Metanet-Desktop-x86_64.AppImage metanet-desktop-x86_64.AppImage
+      - name: Create AppImage
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --icon-file=AppDir/usr/share/icons/hicolor/128x128/apps/metanet-desktop.png --desktop-file=AppDir/usr/share/applications/metanet-desktop.desktop
+          mv Metanet-Desktop-x86_64.AppImage metanet-desktop-x86_64.AppImage
 
-      # - name: Import GPG Key for Linux Signing
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   env:
-      #     GPG_PRIVATE_KEY: ${{ secrets.METANET_GPG_PRIVATE_KEY }}
-      #   run: |
-      #     echo "$GPG_PRIVATE_KEY" | gpg --import
+      - name: Import GPG Key for Linux Signing
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.METANET_GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --import
 
-      # - name: Sign AppImage with GPG
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   run: |
-      #     gpg --detach-sign --armor metanet-desktop-x86_64.AppImage
+      - name: Sign AppImage with GPG
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          gpg --detach-sign --armor metanet-desktop-x86_64.AppImage
 
-      # - name: Create and Sign SHA256SUMS
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   run: |
-      #     sha256sum metanet-desktop-x86_64.AppImage > SHA256SUMS
-      #     gpg --detach-sign --armor SHA256SUMS
+      - name: Create and Sign SHA256SUMS
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sha256sum metanet-desktop-x86_64.AppImage > SHA256SUMS
+          gpg --detach-sign --armor SHA256SUMS
 
-      # - name: Upload Linux Artifacts
-      #   if: matrix.platform == 'ubuntu-22.04'
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: linux-artifacts
-      #     path: |
-      #       metanet-desktop-x86_64.AppImage
-      #       metanet-desktop-x86_64.AppImage.asc
-      #       SHA256SUMS
-      #       SHA256SUMS.asc
+      - name: Upload Linux Artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: |
+            metanet-desktop-x86_64.AppImage
+            metanet-desktop-x86_64.AppImage.asc
+            SHA256SUMS
+            SHA256SUMS.asc
 
       - name: Set DigiCert environment variables
         if: matrix.platform == 'windows-latest'
