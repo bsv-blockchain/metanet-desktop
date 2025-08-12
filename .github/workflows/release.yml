@@ -70,14 +70,14 @@ jobs:
       #     security find-identity -v -p codesigning build.keychain
 
       # - name: verify certificate
-        if: matrix.platform == 'macos-latest'
-        id: verify_certificate
-        run: |
-          CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "BSV")
-          echo "CERT_INFO=$CERT_INFO"
-          CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
-          echo "cert_id=$CERT_ID" >> $GITHUB_OUTPUT
-          echo "Certificate imported."
+        # if: matrix.platform == 'macos-latest'
+        # id: verify_certificate
+        # run: |
+        #   CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "BSV")
+        #   echo "CERT_INFO=$CERT_INFO"
+        #   CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
+        #   echo "cert_id=$CERT_ID" >> $GITHUB_OUTPUT
+        #   echo "Certificate imported."
 
       - name: build and publish
         uses: tauri-apps/tauri-action@v0
