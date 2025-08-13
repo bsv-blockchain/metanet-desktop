@@ -159,23 +159,42 @@ jobs:
       #       SHA256SUMS
       #       SHA256SUMS.asc
 
-      - name: Import Code Signing Certificate
+      - name: Setup DigiCert client authentication certificate
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          $pfxBytes = [System.Convert]::FromBase64String('${{ secrets.DIGICERT_CERTIFICATE }}')
-          $pfxPath = "certificate.pfx"
-          [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-          $securePassword = ConvertTo-SecureString -String "${{ secrets.DIGICERT_CLIENT_AUTH_CERT }}" -AsPlainText -Force
-          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword -Exportable
+          # Decode and save the client auth certificate
+          $certBytes = [System.Convert]::FromBase64String('${{ secrets.DIGICERT_CLIENT_AUTH_CERT }}')
+          $certPath = "client_auth.p12"
+          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
+          
+          # Import the client auth certificate
+          $securePassword = ConvertTo-SecureString -String "${{ secrets.DIGICERT_CLIENT_AUTH_PASS }}" -AsPlainText -Force
+          Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword -Exportable
+          
+          # Clean up the certificate file
+          Remove-Item $certPath
 
-      - name: Sign Windows Executables
+      - name: Set DigiCert environment variables
+        if: matrix.platform == 'windows-latest'
+        run: |
+          echo "SM_HOST=${{ secrets.DIGICERT_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.DIGICERT_AUTOMATION_KEY }}" >> "$GITHUB_ENV"
+          echo "SM_FINGERPRINT=${{ secrets.DIGICERT_CODE_SIGNING_SHA1_HASH }}" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Code signing with Software Trust Manager
+        if: matrix.platform == 'windows-latest'
+        uses: digicert/ssm-code-signing@v1.1.0
+        with:
+          force-download-tools: "true"
+
+      - name: Sign Windows Executables with DigiCert
         if: matrix.platform == 'windows-latest'
         shell: cmd
         run: |
-          set THUMBPRINT=${{ secrets.DIGICERT_CODE_SIGNING_SHA1_HASH }}
           for /r "src-tauri\target\release\bundle" %%f in (*.exe *.msi) do (
-            signtool sign /sha256 %THUMBPRINT% /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /v "%%f"
+            smctl sign --fingerprint %SM_FINGERPRINT% --input "%%f" --verbose
           )
 
       - name: Verify Windows Signatures
