@@ -159,22 +159,6 @@ jobs:
       #       SHA256SUMS
       #       SHA256SUMS.asc
 
-      - name: Setup DigiCert client authentication certificate
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Decode and save the client auth certificate
-          $certBytes = [System.Convert]::FromBase64String('${{ secrets.DIGICERT_CLIENT_AUTH_CERT }}')
-          $certPath = "client_auth.p12"
-          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
-          
-          # Import the client auth certificate
-          $securePassword = ConvertTo-SecureString -String "${{ secrets.DIGICERT_CLIENT_AUTH_PASS }}" -AsPlainText -Force
-          Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword -Exportable
-          
-          # Clean up the certificate file
-          Remove-Item $certPath
-
       - name: Set up certificate 
         if: matrix.platform == 'windows-latest'
         run: | 
@@ -184,7 +168,6 @@ jobs:
       - name: Set DigiCert environment variables
         if: matrix.platform == 'windows-latest'
         run: |
-          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT 
           echo "SM_HOST=${{ secrets.DIGICERT_HOST }}" >> "$GITHUB_ENV"
           echo "SM_API_KEY=${{ secrets.DIGICERT_KEY_LOCKER_API_KEY }}" >> "$GITHUB_ENV"
           echo "SM_FINGERPRINT=${{ secrets.DIGICERT_CODE_SIGNING_SHA1_HASH }}" >> "$GITHUB_ENV"
@@ -203,7 +186,7 @@ jobs:
         shell: cmd
         run: |
           for /r "src-tauri\target\release\bundle" %%f in (*.exe *.msi) do (
-            smctl sign --fingerprint %SM_FINGERPRINT% --input "%%f" --verbose
+            smctl sign /debug --fingerprint %SM_FINGERPRINT% --input "%%f" --verbose
           )
 
       - name: Verify Windows Signatures
