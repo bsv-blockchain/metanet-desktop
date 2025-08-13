@@ -175,12 +175,21 @@ jobs:
           # Clean up the certificate file
           Remove-Item $certPath
 
+      - name: Set up certificate 
+        if: matrix.platform == 'windows-latest'
+        run: | 
+          echo "${{ secrets.DIGICERT_CLIENT_AUTH_CERT }}" | base64 --decode > /d/Certificate_pkcs12.p12 
+        shell: bash
+
       - name: Set DigiCert environment variables
         if: matrix.platform == 'windows-latest'
         run: |
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT 
           echo "SM_HOST=${{ secrets.DIGICERT_HOST }}" >> "$GITHUB_ENV"
           echo "SM_API_KEY=${{ secrets.DIGICERT_KEY_LOCKER_API_KEY }}" >> "$GITHUB_ENV"
           echo "SM_FINGERPRINT=${{ secrets.DIGICERT_CODE_SIGNING_SHA1_HASH }}" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV" 
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.DIGICERT_CLIENT_AUTH_PASS }}" >> "$GITHUB_ENV" 
         shell: bash
 
       - name: Code signing with Software Trust Manager
