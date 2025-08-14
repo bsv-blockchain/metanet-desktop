@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Metanet Desktop",
   "identifier": "com.metanet-desktop.app",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
