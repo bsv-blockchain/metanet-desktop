@@ -181,6 +181,13 @@ jobs:
         env:
           FORCE_DOWNLOAD_TOOLS: 'true' 
 
+      - name: DigiCert tools healthcheck
+        if: matrix.platform == 'windows-latest'
+        shell: cmd
+        run: |
+          smctl version
+          smctl healthcheck
+
       - name: Sync KeyLocker certificate to Windows store (KSP)
         if: matrix.platform == 'windows-latest'
         shell: cmd
@@ -193,7 +200,7 @@ jobs:
         shell: cmd
         run: |
           for /r "src-tauri\target\release\bundle" %%f in (*.exe *.msi) do (
-            smctl sign --debug --fingerprint %SM_FINGERPRINT% --input "%%f"
+            smctl sign --fingerprint %SM_FINGERPRINT% --input "%%f"
           )
 
       - name: Verify Windows Signatures
