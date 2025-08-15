@@ -181,22 +181,30 @@ jobs:
         env:
           FORCE_DOWNLOAD_TOOLS: 'true' 
 
-      - name: Sign Windows Executables with DigiCert
+      - name: Sync KeyLocker certificate to Windows store (KSP)
+        if: matrix.platform == 'windows-latest'
+        shell: cmd
+        run: |
+          "%LOCALAPPDATA%\Temp\smtools-windows-x64\smksp_cert_sync.exe"
+          certutil.exe -csp "DigiCert Software Trust Manager KSP" -key -user
+
+      - name: Sign Windows executables with DigiCert (KSP)
         if: matrix.platform == 'windows-latest'
         shell: cmd
         run: |
           for /r "src-tauri\target\release\bundle" %%f in (*.exe *.msi) do (
-            smctl sig --debug --fingerprint %SM_FINGERPRINT% --input "%%f" --verbose --config-file C:\Users\RUNNER~1\AppData\Local\Temp\smtools-windows-x64\pkcs11properties.cfg
+            smctl sign --debug --fingerprint %SM_FINGERPRINT% --input "%%f"
           )
 
       - name: Verify Windows Signatures
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) { throw "signtool.exe not found. Ensure Windows 10 SDK is installed on the runner." }
           $files = Get-ChildItem -Recurse -Path src-tauri\target\release\bundle\ -Include *.exe,*.msi | Select-Object -ExpandProperty FullName
           foreach ($file in $files) {
-          & $signtool verify /pa "$file"
+            & $signtool verify /pa "$file"
           }
 
       - name: Upload Windows Artifact - MSI
@@ -223,21 +231,3 @@ jobs:
         run: |
           Write-Host "Checking build directory structure:"
           Get-ChildItem -Path src-tauri\target\release -Recurse | Where-Object { $_.Name -like "*.exe" } | ForEach-Object { $_.FullName }
-
-      - name: Upload Windows Artifact - MSI
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-msi-artifact
-          path: src-tauri/target/release/bundle/msi/*.msi
-          if-no-files-found: warn
-
-      - name: Upload Windows Artifact - EXE
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-exe-artifact
-          path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/nsis-web/*.exe
-          if-no-files-found: warn
