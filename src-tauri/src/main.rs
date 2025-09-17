@@ -24,6 +24,8 @@ use url::Url;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Listener, Window};
 use tokio::sync::oneshot;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 
 use std::path::{Path, PathBuf};
 use tauri::{command, AppHandle, Manager};
@@ -326,16 +328,113 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Extract the main window.
-            let main_window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
+        // Extract the main window.
+        let main_window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
 
-            // Shared, concurrent map to store pending responses.
-            let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
+        // Prevent closing the app when the user closes the window; hide to tray instead
+        {
+            let main_window_for_event = main_window.clone();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // prevent the window from actually closing
+                    api.prevent_close();
+                    // hide the window instead, keeping the app running in the background
+                    let _ = main_window_for_event.hide();
+                }
+            });
+        }
+
+        // Setup a basic system tray with Show and Quit actions
+        #[allow(unused_variables)]
+        {
+            let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+            let tray_menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+
+            let app_handle = app.handle();
+            let mut tray_builder = TrayIconBuilder::new()
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                    }
+                });
+
+            // if available, use the app icon as tray icon
+            if let Some(icon) = app_handle.default_window_icon().cloned() {
+                tray_builder = tray_builder.icon(icon);
+            }
+
+            let _tray = tray_builder.build(app)?;
+        }
+
+        // On macOS, clicking the Dock icon should re-open the hidden window
+        #[cfg(target_os = "macos")]
+        {
+            // Clone handles so we don't borrow `app` across the listener registration
+            let app_handle_activate_outer = app.handle().clone();
+            let app_handle_activate_inner = app_handle_activate_outer.clone();
+            app_handle_activate_outer.listen("tauri://activate", move |_| {
+                if let Some(w) = app_handle_activate_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+
+            let app_handle_reopen_outer = app.handle().clone();
+            let app_handle_reopen_inner = app_handle_reopen_outer.clone();
+            app_handle_reopen_outer.listen("tauri://reopen", move |_| {
+                if let Some(w) = app_handle_reopen_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+
+            // Fallback: when the app gains focus (Dock click), show the window if hidden
+            let app_handle_focus_outer = app.handle().clone();
+            let app_handle_focus_inner = app_handle_focus_outer.clone();
+            app_handle_focus_outer.listen("tauri://focus", move |_| {
+                if let Some(w) = app_handle_focus_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+        }
+
+        // Shared, concurrent map to store pending responses.
+        let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
             // Atomic counter to generate unique request IDs.
             let request_counter = Arc::new(AtomicU64::new(1));
 
             {
                 // Set up a listener for "ts-response" events coming from the frontend.
+                // ... (rest of the code remains the same)
                 // We attach the listener to the main window (not globally) for security.
                 let pending_requests = pending_requests.clone();
                 main_window.listen("ts-response", move |event| {
