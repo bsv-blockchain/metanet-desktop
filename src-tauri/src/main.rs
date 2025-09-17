@@ -602,35 +602,45 @@ fn main() {
                                 }
                             });
 
-                            // Build and run the Hyper server.
-                            let server = builder.serve(make_svc);
+                // Build and run the Hyper server.
+                let server = builder.serve(make_svc);
 
-                            if let Err(e) = server.await {
-                                eprintln!("Server error: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to bind server: {}", e);
-                            std::process::exit(1);
-                        }
-                    }
-                });
-            });
+                if let Err(e) = server.await {
+                    eprintln!("Server error: {}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to bind server: {}", e);
+                std::process::exit(1);
+            }
+        }
+    });
+});
 
-
-        Ok(())
-    })
-    .invoke_handler(tauri::generate_handler![
-        is_focused,
-        request_focus,
-        relinquish_focus,
-        download,
-        save_file,
-        proxy_fetch_manifest
-    ])
-    .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_dialog::init())
-    .run(tauri::generate_context!())
-    .expect("Error while running Tauri application");
-    }
+Ok(())
+})
+        .invoke_handler(tauri::generate_handler![
+    is_focused,
+    request_focus,
+    relinquish_focus,
+    download,
+    save_file,
+    proxy_fetch_manifest
+])
+.plugin(tauri_plugin_opener::init())
+.plugin(tauri_plugin_shell::init())
+.build(tauri::generate_context!())
+.expect("Error while building Tauri application")
+  .run(|app_handle, event| {
+      #[cfg(target_os = "macos")]
+      {
+          if let tauri::RunEvent::Reopen { .. } = event {
+              if let Some(w) = app_handle.get_webview_window(MAIN_WINDOW_NAME) {
+                  let _ = w.show();
+                  let _ = w.unminimize();
+                  let _ = w.set_focus();
+              }
+          }
+      }
+  });
+}
