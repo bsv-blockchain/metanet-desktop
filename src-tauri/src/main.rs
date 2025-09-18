@@ -327,7 +327,7 @@ async fn download(app_handle: AppHandle, filename: String, content: Vec<u8>) -> 
 }
 
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
         // Extract the main window.
@@ -679,6 +679,21 @@ fn main() {
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_dialog::init())
-    .run(tauri::generate_context!())
-    .expect("Error while running Tauri application");
+    .build(tauri::generate_context!())
+    .expect("Error while building Tauri application");
+
+    // Handle macOS Dock clicks: when the app is running with no visible windows,
+    // clicking the Dock icon triggers RunEvent::Reopen. Show and focus the main window.
+    app.run(|app_handle, event| {
+        match event {
+            tauri::RunEvent::Reopen { .. } => {
+                if let Some(w) = app_handle.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            }
+            _ => {}
+        }
+    });
 }
