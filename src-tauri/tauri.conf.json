@@ -14,7 +14,8 @@
       {
         "title": "Metanet Desktop",
         "width": 1620,
-        "height": 1000
+        "height": 1000,
+        "visible": false
       }
     ],
     "security": {

@@ -332,9 +332,10 @@ fn main() {
         .setup(|app| {
         // Extract the main window.
         let main_window: tauri::WebviewWindow = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
-            if std::env::args().any(|a| a == "--autostart") {
-                let _ = main_window.minimize();
-            }
+        let autostart_mode: bool = std::env::args().any(|a| a == "--autostart");
+        if autostart_mode {
+            let _ = main_window.hide();
+        }
 
         // Prevent closing the app when the user closes the window; hide to tray instead
         {
@@ -402,7 +403,9 @@ fn main() {
             // Clone handles so we don't borrow `app` across the listener registration
             let app_handle_activate_outer = app.handle().clone();
             let app_handle_activate_inner = app_handle_activate_outer.clone();
+            let autostart_mode_activate = autostart_mode;
             app_handle_activate_outer.listen("tauri://activate", move |_| {
+                if autostart_mode_activate { return; }
                 if let Some(w) = app_handle_activate_inner.get_webview_window(MAIN_WINDOW_NAME) {
                     let _ = w.show();
                     let _ = w.unminimize();
@@ -412,7 +415,9 @@ fn main() {
 
             let app_handle_reopen_outer = app.handle().clone();
             let app_handle_reopen_inner = app_handle_reopen_outer.clone();
+            let autostart_mode_reopen = autostart_mode;
             app_handle_reopen_outer.listen("tauri://reopen", move |_| {
+                if autostart_mode_reopen { return; }
                 if let Some(w) = app_handle_reopen_inner.get_webview_window(MAIN_WINDOW_NAME) {
                     let _ = w.show();
                     let _ = w.unminimize();
@@ -423,7 +428,9 @@ fn main() {
             // Fallback: when the app gains focus (Dock click), show the window if hidden
             let app_handle_focus_outer = app.handle().clone();
             let app_handle_focus_inner = app_handle_focus_outer.clone();
+            let autostart_mode_focus = autostart_mode;
             app_handle_focus_outer.listen("tauri://focus", move |_| {
+                if autostart_mode_focus { return; }
                 if let Some(w) = app_handle_focus_inner.get_webview_window(MAIN_WINDOW_NAME) {
                     let _ = w.show();
                     let _ = w.unminimize();
@@ -622,6 +629,42 @@ fn main() {
     });
 });
 
+            #[cfg(desktop)]
+            {
+                app
+                    .handle()
+                    .plugin(tauri_plugin_autostart::init(
+                        MacosLauncher::LaunchAgent,
+                        Some(vec!["--autostart"]),
+                    ));
+
+                if let Ok(config_dir) = app.path().app_config_dir() {
+                    let enabled_marker = config_dir.join("autostart_enabled.marker");
+                    let args_migration_marker = config_dir.join("autostart_args_v1.marker");
+
+                    let autostart = app.autolaunch();
+
+                    if autostart.is_enabled().unwrap_or(false) && !args_migration_marker.exists() {
+                        let _ = autostart.disable();
+                        let _ = autostart.enable();
+                        let _ = std::fs::write(&args_migration_marker, b"1");
+                    }
+
+                    if !enabled_marker.exists() {
+                        if let Ok(false) = autostart.is_enabled() {
+                            let _ = autostart.enable();
+                        }
+                        let _ = std::fs::create_dir_all(&config_dir);
+                        let _ = std::fs::write(&enabled_marker, b"1");
+                    }
+                }
+            }
+
+        if !autostart_mode {
+            let _ = main_window.show();
+            let _ = main_window.unminimize();
+            let _ = main_window.set_focus();
+        }
 
         Ok(())
     })
