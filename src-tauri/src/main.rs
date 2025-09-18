@@ -329,6 +329,11 @@ async fn download(app_handle: AppHandle, filename: String, content: Vec<u8>) -> 
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Register autostart plugin early on the builder chain
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
         .setup(|app| {
         // Extract the main window.
         let main_window: tauri::WebviewWindow = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
@@ -631,18 +636,18 @@ fn main() {
 
             #[cfg(desktop)]
             {
-                app
-                    .handle()
-                    .plugin(tauri_plugin_autostart::init(
-                        MacosLauncher::LaunchAgent,
-                        Some(vec!["--autostart"]),
-                    ));
+                // Ensure autostart is enabled regardless of config_dir availability.
+                let autostart = app.autolaunch();
+                let _ = autostart.enable();
+                match autostart.is_enabled() {
+                    Ok(true) => eprintln!("[autostart] enabled"),
+                    Ok(false) => eprintln!("[autostart] not enabled after enable()"),
+                    Err(e) => eprintln!("[autostart] is_enabled error: {}", e),
+                }
 
                 if let Ok(config_dir) = app.path().app_config_dir() {
                     let enabled_marker = config_dir.join("autostart_enabled.marker");
                     let args_migration_marker = config_dir.join("autostart_args_v1.marker");
-
-                    let autostart = app.autolaunch();
 
                     if autostart.is_enabled().unwrap_or(false) && !args_migration_marker.exists() {
                         let _ = autostart.disable();
@@ -650,10 +655,8 @@ fn main() {
                         let _ = std::fs::write(&args_migration_marker, b"1");
                     }
 
+                    // Create the local marker on first run (informational only).
                     if !enabled_marker.exists() {
-                        if let Ok(false) = autostart.is_enabled() {
-                            let _ = autostart.enable();
-                        }
                         let _ = std::fs::create_dir_all(&config_dir);
                         let _ = std::fs::write(&enabled_marker, b"1");
                     }
