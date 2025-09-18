@@ -329,6 +329,9 @@ fn main() {
         .setup(|app| {
             // Extract the main window.
             let main_window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
+            if std::env::args().any(|a| a == "--autostart") {
+                let _ = main_window.minimize();
+            }
 
             // Shared, concurrent map to store pending responses.
             let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
@@ -523,7 +526,13 @@ fn main() {
             #[cfg(desktop)]
             {
                 // Initialize plugin (macOS LaunchAgent, Windows Startup, Linux XDG)
-                app.handle().plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None));
+                // Pass a flag so we can detect autostart launches and minimize on startup
+                app
+                    .handle()
+                    .plugin(tauri_plugin_autostart::init(
+                        MacosLauncher::LaunchAgent,
+                        Some(vec!["--autostart"]),
+                    ));
 
                 // One-time enablement with a marker to respect later user changes
                 if let Ok(config_dir) = app.path().app_config_dir() {
