@@ -20,12 +20,12 @@ use hyper::{
     Body, Request, Response, Server, StatusCode,
 };
 use reqwest::Client;
-use url::Url;
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, Listener, Window};
-use tokio::sync::oneshot;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::{Emitter, Listener, Window};
+use tokio::sync::oneshot;
+use url::Url;
 
 use std::path::{Path, PathBuf};
 use tauri::{command, AppHandle, Manager};
@@ -33,8 +33,8 @@ use tauri::{command, AppHandle, Manager};
 use std::fs;
 
 // Import the Tauri plugins
-use tauri_plugin_dialog;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_dialog;
 
 // Add a command to save files using the standard Rust fs module
 #[tauri::command]
@@ -89,15 +89,16 @@ async fn proxy_fetch_manifest(url: String) -> Result<ProxyFetchResponse, String>
     let status = resp.status().as_u16();
     let mut headers_vec: Vec<(String, String)> = Vec::new();
     for (k, v) in resp.headers().iter() {
-        headers_vec.push((
-            k.as_str().to_string(),
-            v.to_str().unwrap_or("").to_string(),
-        ));
+        headers_vec.push((k.as_str().to_string(), v.to_str().unwrap_or("").to_string()));
     }
 
     let body = resp.text().await.map_err(|e| e.to_string())?;
 
-    Ok(ProxyFetchResponse { status, headers: headers_vec, body })
+    Ok(ProxyFetchResponse {
+        status,
+        headers: headers_vec,
+        body,
+    })
 }
 
 static MAIN_WINDOW_NAME: &str = "main";
@@ -330,7 +331,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
         // Extract the main window.
-        let main_window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
+        let main_window: tauri::WebviewWindow = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
             if std::env::args().any(|a| a == "--autostart") {
                 let _ = main_window.minimize();
             }
@@ -637,4 +638,4 @@ fn main() {
     .plugin(tauri_plugin_dialog::init())
     .run(tauri::generate_context!())
     .expect("Error while running Tauri application");
-    }
+}
