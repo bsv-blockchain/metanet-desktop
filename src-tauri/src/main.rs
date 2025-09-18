@@ -32,6 +32,7 @@ use std::fs;
 
 // Import the Tauri plugins
 use tauri_plugin_dialog;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 // Add a command to save files using the standard Rust fs module
 #[tauri::command]
@@ -518,6 +519,25 @@ fn main() {
                 });
             });
 
+            // Autostart: initialize plugin and enable on first run only
+            #[cfg(desktop)]
+            {
+                // Initialize plugin (macOS LaunchAgent, Windows Startup, Linux XDG)
+                app.handle().plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None));
+
+                // One-time enablement with a marker to respect later user changes
+                if let Ok(config_dir) = app.path().app_config_dir() {
+                    let marker = config_dir.join("autostart_enabled.marker");
+                    if !marker.exists() {
+                        let autostart = app.autolaunch();
+                        if let Ok(false) = autostart.is_enabled() {
+                            let _ = autostart.enable();
+                        }
+                        let _ = std::fs::create_dir_all(&config_dir);
+                        let _ = std::fs::write(&marker, b"1");
+                    }
+                }
+            }
 
         Ok(())
     })
