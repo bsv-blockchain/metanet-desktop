@@ -23,8 +23,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
-use tauri_plugin_autostart::MacosLauncher;
-use tauri_plugin_autostart::ManagerExt;
 use tauri::{Emitter, Listener, Window};
 use tokio::sync::oneshot;
 use url::Url;
@@ -33,9 +31,9 @@ use std::path::{Path, PathBuf};
 use tauri::{command, AppHandle, Manager};
 
 use std::fs;
-use std::time::{Duration, Instant};
 
 // Import the Tauri plugins
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_dialog;
 
 // Add a command to save files using the standard Rust fs module
@@ -137,36 +135,6 @@ use std::sync::Mutex;
 
 #[cfg(target_os = "macos")]
 static PREV_BUNDLE_ID: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
-
-#[cfg(target_os = "macos")]
-static STARTED_HIDDEN_FLAG: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
-#[cfg(target_os = "macos")]
-static LAUNCHED_AT: Lazy<Mutex<Option<Instant>>> = Lazy::new(|| Mutex::new(None));
-
-#[cfg(target_os = "macos")]
-fn recent_boot_within(threshold_secs: u64) -> bool {
-    use std::process::Command;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    if let Ok(out) = Command::new("sysctl").arg("-n").arg("kern.boottime").output() {
-        if out.status.success() {
-            if let Ok(s) = String::from_utf8(out.stdout) {
-                if let Some(idx) = s.find("sec = ") {
-                    let rest = &s[idx + 6..];
-                    if let Some(end) = rest.find(',') {
-                        if let Ok(sec) = rest[..end].trim().parse::<u64>() {
-                            if let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) {
-                                let uptime = now.as_secs().saturating_sub(sec);
-                                return uptime < threshold_secs;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
 
 #[tauri::command]
 fn is_focused(window: Window) -> bool {
@@ -361,67 +329,12 @@ async fn download(app_handle: AppHandle, filename: String, content: Vec<u8>) -> 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec!["--hidden".into(), "--autostart".into()])
-        ))
         .setup(|app| {
         // Extract the main window.
-        let main_window = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
-
-        // If launched normally (not via autostart), show the window on startup.
-        // When launched via autostart, we pass "--hidden" and keep it hidden.
-        // Additionally, on macOS we detect a very recent system boot and start hidden
-        // to avoid popping on login even if older login items lack args.
-        #[cfg(target_os = "macos")]
-        let boot_recent = recent_boot_within(300);
-        #[cfg(not(target_os = "macos"))]
-        let boot_recent = false;
-        let mut has_hidden_arg = false;
-        let mut has_autostart_arg = false;
-        let mut has_finder_psn_arg = false;
-        for a in std::env::args() {
-            if a == "--hidden" { has_hidden_arg = true; }
-            if a == "--autostart" { has_autostart_arg = true; }
-            if a.starts_with("-psn_") { has_finder_psn_arg = true; }
-        }
-        // Hide if explicitly requested or if autostart; as a fallback, if the system just booted
-        // and this is not a Finder double-click (no -psn arg), assume it's a login start and hide.
-        let started_hidden = has_hidden_arg || has_autostart_arg || (boot_recent && !has_finder_psn_arg);
-        #[cfg(target_os = "macos")]
-        {
-            if let Ok(mut t) = LAUNCHED_AT.lock() {
-                *t = Some(Instant::now());
-            }
-            if let Ok(mut f) = STARTED_HIDDEN_FLAG.lock() {
-                *f = started_hidden;
-            }
-        }
-        if !started_hidden {
-            let _ = main_window.show();
-            let _ = main_window.unminimize();
-            let _ = main_window.set_focus();
-        }
-
-        // macOS: one-time migration to ensure LaunchAgent includes plugin args
-        // ("--hidden" and "--autostart"). If autostart was previously enabled
-        // without args, toggle it to refresh the plist with our arg list.
-        #[cfg(target_os = "macos")]
-        {
-            if let Ok(config_dir) = app.path().app_config_dir() {
-                let marker = config_dir.join("autostart_args_v2_applied.marker");
-                if !marker.exists() {
-                    let autostart = app.autolaunch();
-                    if let Ok(true) = autostart.is_enabled() {
-                        let _ = autostart.disable();
-                        let _ = autostart.enable();
-                        let _ = std::fs::create_dir_all(&config_dir);
-                        let _ = std::fs::write(&marker, b"1");
-                    }
-                }
-            }
+        let main_window: tauri::WebviewWindow = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
+        let autostart_mode: bool = std::env::args().any(|a| a == "--autostart");
+        if autostart_mode {
+            let _ = main_window.hide();
         }
 
         // Prevent closing the app when the user closes the window; hide to tray instead
@@ -484,7 +397,47 @@ fn main() {
             let _tray = tray_builder.build(app)?;
         }
 
-        // On macOS we rely on RunEvent::Reopen (below) to handle Dock icon clicks.
+        // On macOS, clicking the Dock icon should re-open the hidden window
+        #[cfg(target_os = "macos")]
+        {
+            // Clone handles so we don't borrow `app` across the listener registration
+            let app_handle_activate_outer = app.handle().clone();
+            let app_handle_activate_inner = app_handle_activate_outer.clone();
+            let autostart_mode_activate = autostart_mode;
+            app_handle_activate_outer.listen("tauri://activate", move |_| {
+                if autostart_mode_activate { return; }
+                if let Some(w) = app_handle_activate_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+
+            let app_handle_reopen_outer = app.handle().clone();
+            let app_handle_reopen_inner = app_handle_reopen_outer.clone();
+            let autostart_mode_reopen = autostart_mode;
+            app_handle_reopen_outer.listen("tauri://reopen", move |_| {
+                if autostart_mode_reopen { return; }
+                if let Some(w) = app_handle_reopen_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+
+            // Fallback: when the app gains focus (Dock click), show the window if hidden
+            let app_handle_focus_outer = app.handle().clone();
+            let app_handle_focus_inner = app_handle_focus_outer.clone();
+            let autostart_mode_focus = autostart_mode;
+            app_handle_focus_outer.listen("tauri://focus", move |_| {
+                if autostart_mode_focus { return; }
+                if let Some(w) = app_handle_focus_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+            });
+        }
 
         // Shared, concurrent map to store pending responses.
         let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
@@ -676,6 +629,43 @@ fn main() {
     });
 });
 
+            #[cfg(desktop)]
+            {
+                app
+                    .handle()
+                    .plugin(tauri_plugin_autostart::init(
+                        MacosLauncher::LaunchAgent,
+                        Some(vec!["--autostart"]),
+                    ));
+
+                if let Ok(config_dir) = app.path().app_config_dir() {
+                    let enabled_marker = config_dir.join("autostart_enabled.marker");
+                    let args_migration_marker = config_dir.join("autostart_args_v1.marker");
+
+                    let autostart = app.autolaunch();
+
+                    if autostart.is_enabled().unwrap_or(false) && !args_migration_marker.exists() {
+                        let _ = autostart.disable();
+                        let _ = autostart.enable();
+                        let _ = std::fs::write(&args_migration_marker, b"1");
+                    }
+
+                    if !enabled_marker.exists() {
+                        if let Ok(false) = autostart.is_enabled() {
+                            let _ = autostart.enable();
+                        }
+                        let _ = std::fs::create_dir_all(&config_dir);
+                        let _ = std::fs::write(&enabled_marker, b"1");
+                    }
+                }
+            }
+
+        if !autostart_mode {
+            let _ = main_window.show();
+            let _ = main_window.unminimize();
+            let _ = main_window.set_focus();
+        }
+
         Ok(())
     })
     .invoke_handler(tauri::generate_handler![
@@ -686,30 +676,9 @@ fn main() {
         save_file,
         proxy_fetch_manifest
     ])
-    .build(tauri::generate_context!())
-    .expect("Error while building Tauri application")
-    .run(|app_handle, event| {
-        #[cfg(target_os = "macos")]
-        {
-            if let tauri::RunEvent::Reopen { .. } = event {
-                // macOS sometimes emits a Reopen right after launch on login.
-                // Ignore for a very short window if we started hidden.
-                let mut allow_show = true;
-                if let (Ok(f), Ok(t)) = (STARTED_HIDDEN_FLAG.lock(), LAUNCHED_AT.lock()) {
-                    let started_hidden = *f;
-                    let since_launch_recent = t.and_then(|inst| Some(inst.elapsed() < Duration::from_secs(5))).unwrap_or(false);
-                    if started_hidden && since_launch_recent {
-                        allow_show = false;
-                    }
-                }
-                if allow_show {
-                    if let Some(w) = app_handle.get_webview_window(MAIN_WINDOW_NAME) {
-                        let _ = w.show();
-                        let _ = w.unminimize();
-                        let _ = w.set_focus();
-                    }
-                }
-            }
-        }
-    });
+    .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_dialog::init())
+    .run(tauri::generate_context!())
+    .expect("Error while running Tauri application");
 }
