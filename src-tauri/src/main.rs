@@ -326,6 +326,30 @@ async fn download(app_handle: AppHandle, filename: String, content: Vec<u8>) -> 
     fs::write(&final_path, content).map_err(|e| e.to_string())
 }
 
+// ---- Pre-login once-per-install marker commands ----
+#[tauri::command]
+fn is_prelogin_done(app: AppHandle) -> bool {
+    if let Ok(config_dir) = app.path().app_config_dir() {
+        let marker = config_dir.join("prelogin_done.marker");
+        marker.exists()
+    } else {
+        false
+    }
+}
+
+#[tauri::command]
+fn mark_prelogin_done(app: AppHandle) -> Result<(), String> {
+    if let Ok(config_dir) = app.path().app_config_dir() {
+        if let Err(e) = std::fs::create_dir_all(&config_dir) {
+            return Err(e.to_string());
+        }
+        let marker = config_dir.join("prelogin_done.marker");
+        std::fs::write(marker, b"1").map_err(|e| e.to_string())
+    } else {
+        Err("failed to resolve config dir".into())
+    }
+}
+
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -677,7 +701,9 @@ fn main() {
         relinquish_focus,
         download,
         save_file,
-        proxy_fetch_manifest
+        proxy_fetch_manifest,
+        is_prelogin_done,
+        mark_prelogin_done
     ])
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_shell::init())

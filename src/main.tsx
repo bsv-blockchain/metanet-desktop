@@ -9,6 +9,7 @@ import ErrorBoundary from './ErrorBoundary'
 import { tauriFunctions } from './tauriFunctions'
 import packageJson from '../package.json'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
+import { registerPreLoginRoutes } from './preLoginRoutes'
 
 // Define a theme that includes the custom structure expected by the components
 const theme = createTheme({
@@ -20,6 +21,8 @@ const theme = createTheme({
   }
 })
 
+const preLoginUnlistenPromise = registerPreLoginRoutes()
+
 // Create the root and render:
 const rootElement = document.getElementById('root')
 if (rootElement) {
@@ -30,7 +33,17 @@ if (rootElement) {
       <ThemeProvider theme={theme}>
         <ErrorBoundary>
           <UserInterface
-            onWalletReady={onWalletReady}
+            onWalletReady={async (wallet) => {
+              try {
+                const unlisten = await preLoginUnlistenPromise
+                if (typeof unlisten === 'function') {
+                  unlisten()
+                }
+              } catch (e) {
+                console.warn('Failed to unlisten pre-login routes:', e)
+              }
+              return onWalletReady(wallet)
+            }}
             nativeHandlers={tauriFunctions}
             appVersion={packageJson.version}
             appName="Metanet Desktop"

@@ -27,7 +27,6 @@ import {
 } from '@bsv/sdk';
 import { listen, emit } from '@tauri-apps/api/event'
 
-
 // Parse the origin header and turn it into a fqdn (e.g. projectbabbage.com:8080)
 // Handles both origin and legacy originator headers
 function parseOrigin(req, headers: Record<string, string>): string {

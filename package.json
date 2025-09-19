@@ -11,7 +11,7 @@
     "tauri": "tauri",
     "tauri-ui-dev": "tauri dev --config src-tauri/tauri.ui-dev.conf.json",
     "release-version": "node update-version.js",
-    "clean": "rm -rf node_modules dist src-tauri/target .vite .cache package-lock.json yarn.lock pnpm-lock.yaml && cd src-tauri && cargo clean || true"
+    "clean": "rm -rf node_modules dist src-tauri/target .vite .cache package-lock.json yarn.lock pnpm-lock.yaml && cd src-tauri && cargo clean || true && rm -rf \"$HOME/Library/Application Support/com.metanet-desktop.app\" \"$HOME/Library/Caches/com.metanet-desktop.app\""
   },
   "dependencies": {
     "@bsv/brc100-ui-react-components": "^0.2.0",
