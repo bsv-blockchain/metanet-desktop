@@ -59,9 +59,9 @@ export async function registerPreLoginRoutesOnce(): Promise<UnlistenFn | (() => 
           if (resp && resp.status >= 200 && resp.status < 300 && resp.body) {
             try {
               const manifest = JSON.parse(resp.body)
-              if (manifest && typeof manifest === 'object' && manifest.babbage) {  // TODO
+              if (manifest && typeof manifest === 'object' && manifest) {
                 try {
-                  sessionStorage.setItem('babbage', JSON.stringify(manifest.babbage))  // TODO
+                  sessionStorage.setItem('appinfo', JSON.stringify(manifest))
 
                   console.log('manifestUrl', manifestUrl)
                   console.log('manifest', manifest)
