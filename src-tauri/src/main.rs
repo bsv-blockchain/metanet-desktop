@@ -32,8 +32,7 @@ use tauri::{command, AppHandle, Manager};
 
 use std::fs;
 
-// Import the Tauri plugins
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+// Removed: autostart plugin imports
 use tauri_plugin_dialog;
 
 // Add a command to save files using the standard Rust fs module
@@ -314,7 +313,7 @@ async fn download(app_handle: AppHandle, filename: String, content: Vec<u8>) -> 
     let mut counter = 1;
     while final_path.exists() {
         let new_filename = if ext.is_empty() {
-            format!("{} ({}).{}", stem, counter, ext)
+            format!("{} ({})", stem, counter)
         } else {
             format!("{} ({}).{}", stem, counter, ext)
         };
@@ -353,129 +352,115 @@ fn mark_prelogin_done(app: AppHandle) -> Result<(), String> {
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        // Register autostart plugin early on the builder chain
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec!["--autostart"]),
-        ))
+        // Removed: autostart plugin registration
         .setup(|app| {
-        // Extract the main window.
-        let main_window: tauri::WebviewWindow = app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
-        let autostart_mode: bool = std::env::args().any(|a| a == "--autostart");
-        if autostart_mode {
-            let _ = main_window.hide();
-        }
+            // Extract the main window.
+            let main_window: tauri::WebviewWindow =
+                app.get_webview_window(MAIN_WINDOW_NAME).unwrap();
 
-        // Prevent closing the app when the user closes the window; hide to tray instead
-        {
-            let main_window_for_event = main_window.clone();
-            main_window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    // prevent the window from actually closing
-                    api.prevent_close();
-                    // hide the window instead, keeping the app running in the background
-                    let _ = main_window_for_event.hide();
+            // Prevent closing the app when the user closes the window; hide to tray instead
+            {
+                let main_window_for_event = main_window.clone();
+                main_window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        // prevent the window from actually closing
+                        api.prevent_close();
+                        // hide the window instead, keeping the app running in the background
+                        let _ = main_window_for_event.hide();
+                    }
+                });
+            }
+
+            // Setup a basic system tray with Show and Quit actions
+            #[allow(unused_variables)]
+            {
+                let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
+                let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+                let tray_menu = MenuBuilder::new(app)
+                    .item(&show_item)
+                    .separator()
+                    .item(&quit_item)
+                    .build()?;
+
+                let app_handle = app.handle();
+                let mut tray_builder = TrayIconBuilder::new()
+                    .menu(&tray_menu)
+                    .on_menu_event(|app, event| match event.id().as_ref() {
+                        "show" => {
+                            if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
+                                let _ = w.show();
+                                let _ = w.unminimize();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click { .. } = event {
+                            let app = tray.app_handle();
+                            if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
+                                let _ = w.show();
+                                let _ = w.unminimize();
+                                let _ = w.set_focus();
+                            }
+                        }
+                    });
+
+                // if available, use the app icon as tray icon
+                if let Some(icon) = app_handle.default_window_icon().cloned() {
+                    tray_builder = tray_builder.icon(icon);
                 }
-            });
-        }
 
-        // Setup a basic system tray with Show and Quit actions
-        #[allow(unused_variables)]
-        {
-            let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
-            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+                let _tray = tray_builder.build(app)?;
+            }
 
-            let tray_menu = MenuBuilder::new(app)
-                .item(&show_item)
-                .separator()
-                .item(&quit_item)
-                .build()?;
-
-            let app_handle = app.handle();
-            let mut tray_builder = TrayIconBuilder::new()
-                .menu(&tray_menu)
-                .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => {
-                        if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
-                            let _ = w.show();
-                            let _ = w.unminimize();
-                            let _ = w.set_focus();
-                        }
-                    }
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(w) = app.get_webview_window(MAIN_WINDOW_NAME) {
-                            let _ = w.show();
-                            let _ = w.unminimize();
-                            let _ = w.set_focus();
-                        }
+            // On macOS, clicking the Dock icon should re-open the hidden window
+            #[cfg(target_os = "macos")]
+            {
+                // Clone handles so we don't borrow `app` across the listener registration
+                let app_handle_activate_outer = app.handle().clone();
+                let app_handle_activate_inner = app_handle_activate_outer.clone();
+                app_handle_activate_outer.listen("tauri://activate", move |_| {
+                    if let Some(w) = app_handle_activate_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
                     }
                 });
 
-            // if available, use the app icon as tray icon
-            if let Some(icon) = app_handle.default_window_icon().cloned() {
-                tray_builder = tray_builder.icon(icon);
+                let app_handle_reopen_outer = app.handle().clone();
+                let app_handle_reopen_inner = app_handle_reopen_outer.clone();
+                app_handle_reopen_outer.listen("tauri://reopen", move |_| {
+                    if let Some(w) = app_handle_reopen_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                    }
+                });
+
+                // Fallback: when the app gains focus (Dock click), show the window if hidden
+                let app_handle_focus_outer = app.handle().clone();
+                let app_handle_focus_inner = app_handle_focus_outer.clone();
+                app_handle_focus_outer.listen("tauri://focus", move |_| {
+                    if let Some(w) = app_handle_focus_inner.get_webview_window(MAIN_WINDOW_NAME) {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                    }
+                });
             }
 
-            let _tray = tray_builder.build(app)?;
-        }
-
-        // On macOS, clicking the Dock icon should re-open the hidden window
-        #[cfg(target_os = "macos")]
-        {
-            // Clone handles so we don't borrow `app` across the listener registration
-            let app_handle_activate_outer = app.handle().clone();
-            let app_handle_activate_inner = app_handle_activate_outer.clone();
-            let autostart_mode_activate = autostart_mode;
-            app_handle_activate_outer.listen("tauri://activate", move |_| {
-                if autostart_mode_activate { return; }
-                if let Some(w) = app_handle_activate_inner.get_webview_window(MAIN_WINDOW_NAME) {
-                    let _ = w.show();
-                    let _ = w.unminimize();
-                    let _ = w.set_focus();
-                }
-            });
-
-            let app_handle_reopen_outer = app.handle().clone();
-            let app_handle_reopen_inner = app_handle_reopen_outer.clone();
-            let autostart_mode_reopen = autostart_mode;
-            app_handle_reopen_outer.listen("tauri://reopen", move |_| {
-                if autostart_mode_reopen { return; }
-                if let Some(w) = app_handle_reopen_inner.get_webview_window(MAIN_WINDOW_NAME) {
-                    let _ = w.show();
-                    let _ = w.unminimize();
-                    let _ = w.set_focus();
-                }
-            });
-
-            // Fallback: when the app gains focus (Dock click), show the window if hidden
-            let app_handle_focus_outer = app.handle().clone();
-            let app_handle_focus_inner = app_handle_focus_outer.clone();
-            let autostart_mode_focus = autostart_mode;
-            app_handle_focus_outer.listen("tauri://focus", move |_| {
-                if autostart_mode_focus { return; }
-                if let Some(w) = app_handle_focus_inner.get_webview_window(MAIN_WINDOW_NAME) {
-                    let _ = w.show();
-                    let _ = w.unminimize();
-                    let _ = w.set_focus();
-                }
-            });
-        }
-
-        // Shared, concurrent map to store pending responses.
-        let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
+            // Shared, concurrent map to store pending responses.
+            let pending_requests: Arc<PendingMap> = Arc::new(DashMap::new());
             // Atomic counter to generate unique request IDs.
             let request_counter = Arc::new(AtomicU64::new(1));
 
             {
                 // Set up a listener for "ts-response" events coming from the frontend.
-                // ... (rest of the code remains the same)
                 // We attach the listener to the main window (not globally) for security.
                 let pending_requests = pending_requests.clone();
                 main_window.listen("ts-response", move |event| {
@@ -538,7 +523,6 @@ fn main() {
                                         let request_counter = request_counter.clone();
 
                                         async move {
-
                                             // Intercept any OPTIONS requests
                                             if req.method() == hyper::Method::OPTIONS {
                                                 let mut res = Response::new(Body::empty());
@@ -643,73 +627,43 @@ fn main() {
                                 }
                             });
 
-                // Build and run the Hyper server.
-                let server = builder.serve(make_svc);
+                            // Build and run the Hyper server.
+                            let server = builder.serve(make_svc);
 
-                if let Err(e) = server.await {
-                    eprintln!("Server error: {}", e);
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to bind server: {}", e);
-                std::process::exit(1);
-            }
-        }
-    });
-});
-
-            #[cfg(desktop)]
-            {
-                // Ensure autostart is enabled regardless of config_dir availability.
-                let autostart = app.autolaunch();
-                let _ = autostart.enable();
-                match autostart.is_enabled() {
-                    Ok(true) => eprintln!("[autostart] enabled"),
-                    Ok(false) => eprintln!("[autostart] not enabled after enable()"),
-                    Err(e) => eprintln!("[autostart] is_enabled error: {}", e),
-                }
-
-                if let Ok(config_dir) = app.path().app_config_dir() {
-                    let enabled_marker = config_dir.join("autostart_enabled.marker");
-                    let args_migration_marker = config_dir.join("autostart_args_v1.marker");
-
-                    if autostart.is_enabled().unwrap_or(false) && !args_migration_marker.exists() {
-                        let _ = autostart.disable();
-                        let _ = autostart.enable();
-                        let _ = std::fs::write(&args_migration_marker, b"1");
+                            if let Err(e) = server.await {
+                                eprintln!("Server error: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to bind server: {}", e);
+                            std::process::exit(1);
+                        }
                     }
+                });
+            });
 
-                    // Create the local marker on first run (informational only).
-                    if !enabled_marker.exists() {
-                        let _ = std::fs::create_dir_all(&config_dir);
-                        let _ = std::fs::write(&enabled_marker, b"1");
-                    }
-                }
-            }
-
-        if !autostart_mode {
+            // Show on first launch
             let _ = main_window.show();
             let _ = main_window.unminimize();
             let _ = main_window.set_focus();
-        }
 
-        Ok(())
-    })
-    .invoke_handler(tauri::generate_handler![
-        is_focused,
-        request_focus,
-        relinquish_focus,
-        download,
-        save_file,
-        proxy_fetch_manifest,
-        is_prelogin_done,
-        mark_prelogin_done
-    ])
-    .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_dialog::init())
-    .build(tauri::generate_context!())
-    .expect("Error while building Tauri application");
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            is_focused,
+            request_focus,
+            relinquish_focus,
+            download,
+            save_file,
+            proxy_fetch_manifest,
+            is_prelogin_done,
+            mark_prelogin_done
+        ])
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .build(tauri::generate_context!())
+        .expect("Error while building Tauri application");
 
     // Handle macOS Dock clicks: when the app is running with no visible windows,
     // clicking the Dock icon triggers RunEvent::Reopen. Show and focus the main window.
