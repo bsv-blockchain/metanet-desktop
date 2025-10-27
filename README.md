@@ -1,3 +1,7 @@
+The latest versions of this software will be released elsewhere: [https://github.com/bsv-blockchain/bsv-desktop](https://github.com/bsv-blockchain/bsv-desktop)
+
+This repo will remain an archive of earlier versions for posterity.
+
 # BSV Desktop
 
 BRC100 Wallet Desktop Application Example
